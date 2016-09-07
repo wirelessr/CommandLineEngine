@@ -42,10 +42,23 @@ main(int argc, char *argv[])
             pValue = PyObject_CallObject(pFunc, pArgs);
             Py_DECREF(pArgs);
             if (pValue != NULL) {
-                printf("Result of call: %ld\n", PyLong_AsLong(pValue));
+				long total = PyList_Size(pValue);
+                //printf("Result of call: %ld\n", PyLong_AsLong(pValue));
+                printf("Length of list: %ld\n", total);
 
-				cmd_func[PyLong_AsLong(pValue)](argc, argv);	/* TODO */
-                
+				{
+					char *cmd_argv[total];
+					int i;
+
+					cmd_argv[0] = "zysh";
+					for(i = 1; i < total; i++)
+					{
+						printf("argv[%d]=%s\n", i, PyBytes_AsString(PyList_GetItem(pValue, i)));
+						cmd_argv[i] = PyBytes_AsString(PyList_GetItem(pValue, i));
+					}
+					i = PyLong_AsLong(PyList_GetItem(pValue, 0));
+					cmd_func[i](total, cmd_argv);	/* TODO */
+                }
 				Py_DECREF(pValue);
             }
             else {

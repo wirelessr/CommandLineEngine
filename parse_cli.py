@@ -124,11 +124,12 @@ def cli_exec(zysh_cli):
 
 		current_entry = current_entry.sym_dict[idx]
 		if current_entry.isArg:
-			arg_list.append(s)
+			arg_list.append(s.encode())
 			
 	
-	print("uses ", current_entry.func, "(", arg_list, ")", "idx=%d"%(func_list.index(current_entry.func)))
-	return func_list.index(current_entry.func)
+	arg_list.insert(0, func_list.index(current_entry.func))
+	print("uses ", current_entry.func, "(", arg_list, ")")
+	return arg_list
 
 
 

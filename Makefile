@@ -5,7 +5,7 @@ PREP_SRC=cmd_func.c
 SRCS=zysh.c zyshd.c
 
 all: prep
-	gcc $(CFLAGS) $(SRCS) $(PREP_SRC) -o zysh $(LDFLAGS)
+	gcc -O0 -g $(CFLAGS) $(SRCS) $(PREP_SRC) -o zysh $(LDFLAGS)
 
 prep:
 	rm -f $(PREP_SRC)
