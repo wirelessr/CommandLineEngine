@@ -27,18 +27,14 @@ def inMetaList(metasym, mlist):
 class DefPhase(ZyshListener):
 	def __init__(self):
 		self.entry = Entry()
-		self.stack = []
 
 		f = open('cmd_func.c', 'w')
 		f.write("typedef int (* cmd_func_t)(int, char **);\ncmd_func_t cmd_func[] = {\n")		
 		f.close()
 	
-	def exitMeta(self, ctx):
-		self.stack.append(ctx.SYMBOL().getText())
-
 	def exitVarDecl(self, ctx):
 		global meta_list
-		meta = self.stack.pop()
+		meta = ctx.meta().getText()
 
 		if inMetaList(meta, meta_list) is None:
 			meta_list.append((meta, ctx.syntax().getText()))
@@ -140,8 +136,8 @@ token_stream = CommonTokenStream(lexer)
 parser = ZyshParser(token_stream)
 tree = parser.top()
 
-lisp_tree_str = tree.toStringTree(recog=parser)
-print(lisp_tree_str)
+# lisp_tree_str = tree.toStringTree(recog=parser)
+# print(lisp_tree_str)
 
 walker = ParseTreeWalker()
 
