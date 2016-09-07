@@ -1,4 +1,4 @@
-%define IF "(eth0|wlan0)";
+%define IF "(eth0|wlan0)" "<eth0 or wlan0>";
 
 %command
 show capwap % ap info = {

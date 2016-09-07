@@ -53,7 +53,6 @@ main(int argc, char *argv[])
 					cmd_argv[0] = "zysh";
 					for(i = 1; i < total; i++)
 					{
-						printf("argv[%d]=%s\n", i, PyBytes_AsString(PyList_GetItem(pValue, i)));
 						cmd_argv[i] = PyBytes_AsString(PyList_GetItem(pValue, i));
 					}
 					i = PyLong_AsLong(PyList_GetItem(pValue, 0));

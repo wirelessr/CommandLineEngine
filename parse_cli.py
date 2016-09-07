@@ -41,7 +41,7 @@ class DefPhase(ZyshListener):
 		meta = self.stack.pop()
 
 		if inMetaList(meta, meta_list) is None:
-			meta_list.append((meta, ctx.SYNTAX().getText()))
+			meta_list.append((meta, ctx.syntax().getText()))
 
 	def enterFunctionDecl(self, ctx):
 		global global_entry
@@ -140,8 +140,8 @@ token_stream = CommonTokenStream(lexer)
 parser = ZyshParser(token_stream)
 tree = parser.top()
 
-# lisp_tree_str = tree.toStringTree(recog=parser)
-# print(lisp_tree_str)
+lisp_tree_str = tree.toStringTree(recog=parser)
+print(lisp_tree_str)
 
 walker = ParseTreeWalker()
 

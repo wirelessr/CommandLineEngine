@@ -3,7 +3,7 @@ grammar Zysh;
 top:   (functionDecl | varDecl)+ ;
 
 varDecl
-    :   '%define' meta SYNTAX ';'
+    :   '%define' meta syntax helper ';'
     ;
 
 functionDecl
@@ -26,8 +26,8 @@ INT :   [0-9]+ ;
 fragment
 LETTER : [a-zA-Z] ;
 
-SYNTAX : STRING ;
-HELP : STRING ;
+syntax : STRING ;
+helper : STRING ;
 STRING :  '"' (~'"')* '"' ;
 SYMBOL: LETTER (LETTER | DIGIT | '_' | '-')* ;
 
