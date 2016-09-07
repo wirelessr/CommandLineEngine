@@ -1,14 +1,14 @@
 %define IF "(eth0|wlan0)";
 
 %command
-show capwap ap % info = {
+show capwap % ap info = {
 	%privilege 100;
 	%visibility 100;
 	%function show_ap_info;
 }
 
 %command
-show capwap ap % vlan = {
+show capwap % ap vlan = {
 	%privilege 100;
 	%visibility 100;
 	%function show_ap_vlan;

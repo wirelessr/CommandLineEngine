@@ -9,7 +9,8 @@ from ZyshListener import ZyshListener
 
 class Entry:
 	def __init__(self):
-		self.sym_dict = dict()
+		self.sym_dict = {}
+		self.isArg = False
 		self.func = ""
 
 global_entry = Entry()
@@ -55,6 +56,10 @@ class DefPhase(ZyshListener):
 			with open('cmd_func.c', 'w') as modified: modified.write("extern int %s(int, char **);\n"%(self.entry.func) + data + '\t' + self.entry.func + ',\n')
 			func_list.append(self.entry.func)
 	
+	def exitArg(self, ctx):
+		self.exitSym(ctx)
+		self.entry.isArg = True
+
 	def exitSym(self, ctx):
 		global meta_list
 		global sym_list
@@ -104,6 +109,8 @@ def cli_exec(zysh_cli):
 	global global_entry
 	global func_list
 	global sym_list
+	arg_list = []
+
 	print('*** CLI ***')
 	zysh_cli = zysh_cli.decode("utf8")
 	print(zysh_cli)
@@ -116,8 +123,11 @@ def cli_exec(zysh_cli):
 			idx = match_meta(s)
 
 		current_entry = current_entry.sym_dict[idx]
+		if current_entry.isArg:
+			arg_list.append(s)
+			
 	
-	print("uses ", current_entry.func, "()", "idx=%d"%(func_list.index(current_entry.func)))
+	print("uses ", current_entry.func, "(", arg_list, ")", "idx=%d"%(func_list.index(current_entry.func)))
 	return func_list.index(current_entry.func)
 
 

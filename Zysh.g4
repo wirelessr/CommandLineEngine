@@ -10,9 +10,10 @@ functionDecl
     :   '%command' symbols (';' symbols)* '=' block
     ;	
 	
-symbols: sym+ '%' sym+ ;
+symbols: sym+ '%' arg+ ;
 sym: SYMBOL ;
 meta: SYMBOL ;
+arg: SYMBOL;
 block:  '{' privilege visibility function '}' ;	
 	
 privilege: '%privilege' INT	';' ;
