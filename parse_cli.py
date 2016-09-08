@@ -65,7 +65,7 @@ class DefPhase(ZyshListener):
 		if meta_id is None:
 			if current_sym not in sym_list:
 				sym_list.append(current_sym)
-			current_id = sym_list.index(current_sym)
+			current_id = current_sym
 		else:
 			current_id = meta_id
 
@@ -93,13 +93,13 @@ class DefPhase(ZyshListener):
 			i = i + 1
 		f.close()
 
-def match_meta(s):
+def match_meta(token, meta_idx):
 	global meta_list
 
-	for (x, y) in meta_list:
-		if s in y:
-			return meta_list.index((x, y))
-	return None
+	(x, y) = meta_list[meta_idx]
+	if token in y:
+		return True
+	return False
 
 def cli_exec(zysh_cli):
 	global global_entry
@@ -113,12 +113,19 @@ def cli_exec(zysh_cli):
 	
 	current_entry = global_entry
 	for s in zysh_cli.split():
-		if s in sym_list:
-			idx = sym_list.index(s)
+		for sym in current_entry.sym_dict:
+			if type(sym) is str: #symbol
+				if sym == s:
+					current_entry = current_entry.sym_dict[sym]
+					break
+				else:
+					continue
+			elif match_meta(s, sym): #meta
+				current_entry = current_entry.sym_dict[sym]
+				break;
 		else:
-			idx = match_meta(s)
+			current_entry = None
 
-		current_entry = current_entry.sym_dict[idx]
 		if current_entry.isArg:
 			arg_list.append(s.encode())
 			
