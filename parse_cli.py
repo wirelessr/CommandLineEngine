@@ -1,4 +1,5 @@
 import sys
+import re
 
 from antlr4 import *
 from antlr4.InputStream import InputStream
@@ -97,7 +98,7 @@ def match_meta(token, meta_idx):
 	global meta_list
 
 	(x, y) = meta_list[meta_idx]
-	if token in y:
+	if re.match(y[1:-1], token) is not None: # trim the double-quotes
 		return True
 	return False
 
