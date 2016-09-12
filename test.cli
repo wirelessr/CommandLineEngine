@@ -23,6 +23,13 @@ show capwap % ap vlan = {
 }
 
 %command
+show capwap % vlan <1..50> = {
+	%privilege 100;
+	%visibility 100;
+	%function show_ap_vlan;
+}
+
+%command
 show interface % IF = {
 	%privilege 100;
 	%visibility 100;

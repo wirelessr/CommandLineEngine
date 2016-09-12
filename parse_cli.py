@@ -48,7 +48,7 @@ class Range(Sym):
 		if self.min <= num <= self.max:
 			return True
 		return False
-
+	
 class Entry:
 	def __init__(self):
 		self.sym_dict = {}
@@ -100,13 +100,28 @@ class DefPhase(ZyshListener):
 			with open('cmd_func.c', 'w') as modified: modified.write("extern int %s(int, char **);\n"%(self.entry.func) + data + '\t' + self.entry.func + ',\n')
 			func_list.append(self.entry.func)
 	
-	def exitArg(self, ctx):
-		self.exitSym(ctx)
+	def exitSymbolArg(self, ctx):
+		self.exitSymStr(ctx.SYMBOL().getText())
+		self.entry.isArg = True
+
+	def exitRangeArg(self, ctx):
+		global sym_list
+
+		ranges = ctx.RANGE_SYMBOL().getText()
+		min_num, max_num = ranges[1:-1].split("..") # trim the (<) and (>)
+
+		new_item = Range(ranges, min_num, max_num)
+		if new_item not in sym_list:
+			sym_list.append(new_item)
+
+		self.exitSymStr(ranges)
 		self.entry.isArg = True
 
 	def exitSym(self, ctx):
+		self.exitSymStr(ctx.SYMBOL().getText())
+
+	def exitSymStr(self, current_sym):
 		global sym_list
-		current_sym = ctx.SYMBOL().getText()
 		
 		if current_sym not in sym_list:
 			sym_list.append(Sym(current_sym))
@@ -130,7 +145,7 @@ class DefPhase(ZyshListener):
 		
 		f = open('symbols.h', 'w')
 		for sym in sym_list:
-			f.write("#define %s %d\n"%(sym.define, i))
+			f.write("#define %s %d\n"%(sym.define, i)) # FIXME : when different symbols(RANGE) are the same range, it must cause re-define
 			i = i + 1
 		f.close()
 

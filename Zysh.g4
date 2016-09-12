@@ -13,7 +13,9 @@ functionDecl
 symbols: sym+ '%' arg+ ;
 sym: SYMBOL ;
 meta: SYMBOL ;
-arg: SYMBOL;
+arg : SYMBOL # symbolArg
+	| RANGE_SYMBOL # rangeArg
+	;
 block:  '{' privilege visibility function '}' ;	
 	
 privilege: '%privilege' INT	';' ;
@@ -33,7 +35,8 @@ syntax : RANGES # rangeSyntax
 helper : STRING ;
 RANGES : '"<' INT '..' INT '>"' ;
 STRING :  '"' (~'"')* '"' ;
-SYMBOL: LETTER (LETTER | DIGIT | '_' | '-')* ;
+SYMBOL : ('_' | LETTER) (LETTER | DIGIT | '_' | '-')* ;
+RANGE_SYMBOL : '<' INT '..' INT '>' ;
 
 WS  :   [ \t\n\r]+ -> skip ;
 
