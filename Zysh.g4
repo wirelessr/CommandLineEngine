@@ -26,8 +26,12 @@ INT :   [0-9]+ ;
 fragment
 LETTER : [a-zA-Z] ;
 
-syntax : STRING ;
+syntax : '"' ranges '"'
+       | STRING
+       ;
+
 helper : STRING ;
+ranges : '<' INT '..' INT '>' ;
 STRING :  '"' (~'"')* '"' ;
 SYMBOL: LETTER (LETTER | DIGIT | '_' | '-')* ;
 
