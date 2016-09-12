@@ -26,12 +26,12 @@ INT :   [0-9]+ ;
 fragment
 LETTER : [a-zA-Z] ;
 
-syntax : '"' ranges '"'
-       | STRING
+syntax : RANGES # rangeSyntax
+       | STRING	# metaSyntax
        ;
 
 helper : STRING ;
-ranges : '<' INT '..' INT '>' ;
+RANGES : '"<' INT '..' INT '>"' ;
 STRING :  '"' (~'"')* '"' ;
 SYMBOL: LETTER (LETTER | DIGIT | '_' | '-')* ;
 

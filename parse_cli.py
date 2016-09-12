@@ -62,20 +62,30 @@ sym_list = []
 class DefPhase(ZyshListener):
 	def __init__(self):
 		self.entry = Entry()
+		self.item = None
+		self.name = ""
 
 		f = open('cmd_func.c', 'w')
 		f.write("typedef int (* cmd_func_t)(int, char **);\ncmd_func_t cmd_func[] = {\n")		
 		f.close()
 	
+	def enterVarDecl(self, ctx):
+		self.name = ctx.meta().getText()
+
+	def exitRangeSyntax(self, ctx):
+		ranges = ctx.RANGES().getText()
+		min_num, max_num = ranges[2:-2].split("..") # trim the ("<) and (">)
+		self.item = Range(self.name, min_num, max_num)
+
+	def exitMetaSyntax(self, ctx):
+		syntax = ctx.getText()
+		self.item = Meta(self.name, syntax[1:-1]) # trim the double-quotes(")
+		
 	def exitVarDecl(self, ctx):
 		global sym_list
-		meta = ctx.meta().getText()
-		syntax = ctx.syntax().getText()
-		
-		new_item = Meta(meta, syntax[1:-1]) # trim the double-quotes
 
-		if new_item not in sym_list:
-			sym_list.append(new_item)
+		if self.item not in sym_list:
+			sym_list.append(self.item)
 
 	def enterFunctionDecl(self, ctx):
 		global global_entry

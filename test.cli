@@ -1,7 +1,15 @@
 %define IF "(eth0|wlan0)" "<eth0 or wlan0>";
+%define AP_MAX "<1..4>" "1-4";
 
 %command
 show capwap % ap info = {
+	%privilege 100;
+	%visibility 100;
+	%function show_ap_info;
+}
+
+%command
+show capwap % ap idx AP_MAX = {
 	%privilege 100;
 	%visibility 100;
 	%function show_ap_info;
