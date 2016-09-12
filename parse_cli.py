@@ -8,6 +8,47 @@ from ZyshLexer import ZyshLexer
 from ZyshParser import ZyshParser
 from ZyshListener import ZyshListener
 
+class Sym:
+	def __init__(self, id):
+		self.name = id
+		self.define = "SYM_%s"%id.upper()
+	
+	def match(self, token):
+		return token == self.name
+	
+	def __eq__(self, other):
+		if type(other) is str:
+			return self.name == other
+		return self.name == other.name	
+		
+class Meta(Sym):
+	def __init__(self, id, syntax):
+		self.define = "META_%s"%id.upper()
+		self.name = id
+		self.meta = syntax
+	
+	def match(self, token):
+		if re.match(self.meta, token) is None:
+			return False
+		return True
+
+class Range(Sym):
+	def __init__(self, id, min, max):
+		self.define = "RANGE_%s_%s"%(min, max)
+		self.name = id
+		self.min = int(min)
+		self.max = int(max)
+	
+	def match(self, token):
+		try:
+			num = int(token)
+		except ValueError:
+			return False
+			
+		if self.min <= num <= self.max:
+			return True
+		return False
+
 class Entry:
 	def __init__(self):
 		self.sym_dict = {}
@@ -17,13 +58,6 @@ class Entry:
 global_entry = Entry()
 func_list = []
 sym_list = []
-meta_list = []
-
-def inMetaList(metasym, mlist):
-	for (x, y) in mlist:
-		if x == metasym:
-			return mlist.index((x, y))
-	return None
 
 class DefPhase(ZyshListener):
 	def __init__(self):
@@ -34,11 +68,14 @@ class DefPhase(ZyshListener):
 		f.close()
 	
 	def exitVarDecl(self, ctx):
-		global meta_list
+		global sym_list
 		meta = ctx.meta().getText()
+		syntax = ctx.syntax().getText()
+		
+		new_item = Meta(meta, syntax[1:-1]) # trim the double-quotes
 
-		if inMetaList(meta, meta_list) is None:
-			meta_list.append((meta, ctx.syntax().getText()))
+		if new_item not in sym_list:
+			sym_list.append(new_item)
 
 	def enterFunctionDecl(self, ctx):
 		global global_entry
@@ -58,24 +95,20 @@ class DefPhase(ZyshListener):
 		self.entry.isArg = True
 
 	def exitSym(self, ctx):
-		global meta_list
 		global sym_list
 		current_sym = ctx.SYMBOL().getText()
 		
-		meta_id = inMetaList(current_sym, meta_list)
-		if meta_id is None:
-			if current_sym not in sym_list:
-				sym_list.append(current_sym)
-			current_id = current_sym
-		else:
-			current_id = meta_id
-
+		if current_sym not in sym_list:
+			sym_list.append(Sym(current_sym))
+		current_id = sym_list.index(current_sym)
+		
 		if current_id not in self.entry.sym_dict:
 			new_entry = Entry()
 			self.entry.sym_dict[current_id] = new_entry
 			self.entry = new_entry
 		else:
 			self.entry = self.entry.sym_dict.get(current_id)
+		
 	
 	def finish(self):
 		global sym_list
@@ -84,23 +117,12 @@ class DefPhase(ZyshListener):
 		f = open('cmd_func.c', 'a')
 		f.write("};\n")		
 		f.close()
-
+		
 		f = open('symbols.h', 'w')
 		for sym in sym_list:
-			f.write("#define SYM_%s %d\n"%(sym.upper(), i))
-			i = i + 1
-		for meta, syntax in meta_list:
-			f.write("#define META_%s %d\n"%(meta.upper(), i))
+			f.write("#define %s %d\n"%(sym.define, i))
 			i = i + 1
 		f.close()
-
-def match_meta(token, meta_idx):
-	global meta_list
-
-	(x, y) = meta_list[meta_idx]
-	if re.match(y[1:-1], token) is not None: # trim the double-quotes
-		return True
-	return False
 
 def cli_exec(zysh_cli):
 	global global_entry
@@ -114,16 +136,10 @@ def cli_exec(zysh_cli):
 	
 	current_entry = global_entry
 	for s in zysh_cli.split():
-		for sym in current_entry.sym_dict:
-			if type(sym) is str: #symbol
-				if sym == s:
-					current_entry = current_entry.sym_dict[sym]
-					break
-				else:
-					continue
-			elif match_meta(s, sym): #meta
-				current_entry = current_entry.sym_dict[sym]
-				break;
+		for sym_id in current_entry.sym_dict:
+			if sym_list[sym_id].match(s):
+				current_entry = current_entry.sym_dict[sym_id]
+				break
 		else:
 			current_entry = None
 
