@@ -13,10 +13,10 @@ functionDecl
 symbols: sym+ '%' arg ;
 sym: SYMBOL ;
 meta: SYMBOL ;
-arg : SYMBOL arg?			# symbolArg
-	| RANGE_SYMBOL arg?		# rangeArg
+arg : SYMBOL arg*			# symbolArg
+	| RANGE_SYMBOL arg*		# rangeArg
 	| '[' arg ']'			# optionArg
-	| '{' arg '|' arg '}'	# alternArg
+	| '{' arg ('|' arg)+ '}'	# alternArg
 	;
 block:  '{' privilege visibility function '}' ;	
 	
