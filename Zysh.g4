@@ -10,11 +10,13 @@ functionDecl
     :   '%command' symbols (';' symbols)* '=' block
     ;	
 	
-symbols: sym+ '%' arg+ ;
+symbols: sym+ '%' arg ;
 sym: SYMBOL ;
 meta: SYMBOL ;
-arg : SYMBOL # symbolArg
-	| RANGE_SYMBOL # rangeArg
+arg : SYMBOL arg?			# symbolArg
+	| RANGE_SYMBOL arg?		# rangeArg
+	| '[' arg ']'			# optionArg
+	| '{' arg '|' arg '}'	# alternArg
 	;
 block:  '{' privilege visibility function '}' ;	
 	

@@ -100,11 +100,11 @@ class DefPhase(ZyshListener):
 			with open('cmd_func.c', 'w') as modified: modified.write("extern int %s(int, char **);\n"%(self.entry.func) + data + '\t' + self.entry.func + ',\n')
 			func_list.append(self.entry.func)
 	
-	def exitSymbolArg(self, ctx):
+	def enterSymbolArg(self, ctx):
 		self.exitSymStr(ctx.SYMBOL().getText())
 		self.entry.isArg = True
 
-	def exitRangeArg(self, ctx):
+	def enterRangeArg(self, ctx):
 		global sym_list
 
 		ranges = ctx.RANGE_SYMBOL().getText()
