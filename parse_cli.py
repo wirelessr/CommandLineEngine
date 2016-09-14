@@ -6,7 +6,7 @@ from antlr4.InputStream import InputStream
 
 from ZyshLexer import ZyshLexer
 from ZyshParser import ZyshParser
-from ZyshListener import ZyshListener
+from ZyshVisitor import ZyshVisitor
 
 class Sym:
 	def __init__(self, id):
@@ -50,104 +50,136 @@ class Range(Sym):
 		return False
 	
 class Entry:
-	def __init__(self):
+	def __init__(self, isArg=False):
 		self.sym_dict = {}
-		self.isArg = False
+		self.isArg = isArg
 		self.func = ""
 
 global_entry = Entry()
 func_list = []
 sym_list = []
 
-class DefPhase(ZyshListener):
-	def __init__(self):
-		self.entry = Entry()
-		self.item = None
-		self.name = ""
+class DefPhase(ZyshVisitor):
+	def __init__(self, global_entry, sym_list, func_list):
+		self.tree_property = {}
+		self.global_entry = global_entry
+		self.sym_list = sym_list
+		self.func_list = func_list
+		self.func = ""
 
 		f = open('cmd_func.c', 'w')
-		f.write("typedef int (* cmd_func_t)(int, char **);\ncmd_func_t cmd_func[] = {\n")		
 		f.close()
-	
-	def enterVarDecl(self, ctx):
-		self.name = ctx.meta().getText()
 
-	def exitRangeSyntax(self, ctx):
+	def getValue(self, node):
+		return self.tree_property[node]
+
+	def setValue(self, node, value):
+		self.tree_property[node] = value
+
+	def visitVarDecl(self, ctx):
+		name = ctx.meta().getText()
+		self.setValue("varDecl", name)
+		item = self.visit(ctx.syntax())
+
+		if item not in self.sym_list:
+			self.sym_list.append(item)
+
+	def visitRangeSyntax(self, ctx):
 		ranges = ctx.RANGES().getText()
 		min_num, max_num = ranges[2:-2].split("..") # trim the ("<) and (">)
-		self.item = Range(self.name, min_num, max_num)
+		name = self.getValue("varDecl")
+		return Range(name, min_num, max_num)
 
-	def exitMetaSyntax(self, ctx):
+	def visitMetaSyntax(self, ctx):
 		syntax = ctx.getText()
-		self.item = Meta(self.name, syntax[1:-1]) # trim the double-quotes(")
+		name = self.getValue("varDecl")
+		return Meta(name, syntax[1:-1]) # trim the double-quotes(")
+
+	def visitBlock(self, ctx):
+		return (ctx.privilege().getText(), ctx.visibility().getText(), ctx.function().getText())
+
+	def visitFunctionDecl(self, ctx):
+		privilege, visibility, function = self.visit(ctx.block())
+
+		if function not in self.func_list:
+			self.func_list.append(function)
+		self.func = function
+
+		for symbols in ctx.symbols():
+			
+			current_entry = self.global_entry
+			
+			for sym in symbols.sym():
+				sym_str = sym.getText()
+
+				if sym_str not in self.sym_list:
+					self.sym_list.append(Sym(sym_str))
+				
+				sym_id = self.sym_list.index(sym_str)
+
+				if sym_id not in current_entry.sym_dict:
+					entry = Entry()
+					current_entry.sym_dict[sym_id] = entry
+					current_entry = entry
+				else:
+					current_entry = current_entry.sym_dict[sym_id]
+			
+			self.setValue(symbols, current_entry)
+			self.visit(symbols.arg())
+
+	def goBackwardArg(self, ctx, sym_str):
+		parent_entry = self.getValue(ctx.parentCtx)
+		sym_id = self.sym_list.index(sym_str)
+
+		if sym_id not in parent_entry.sym_dict:
+			entry = Entry(True)
+			parent_entry.sym_dict[sym_id] = entry
+			current_entry = entry
+		else:
+			current_entry = parent_entry.sym_dict[sym_id]
 		
-	def exitVarDecl(self, ctx):
-		global sym_list
+		if len(ctx.arg()) == 0:
+			current_entry.func = self.func
+			return 
 
-		if self.item not in sym_list:
-			sym_list.append(self.item)
+		self.setValue(ctx, current_entry)
 
-	def enterFunctionDecl(self, ctx):
-		global global_entry
-		self.entry = global_entry
+		for arg in ctx.arg():
+			self.visit(arg)
 
-	def exitFunction(self, ctx):
-		global func_list
-		self.entry.func = ctx.SYMBOL().getText()
+	def visitSymbolArg(self, ctx):
+		parent_entry = self.getValue(ctx.parentCtx)
 
-		if self.entry.func not in func_list:
-			with open('cmd_func.c', 'r') as original: data = original.read()
-			with open('cmd_func.c', 'w') as modified: modified.write("extern int %s(int, char **);\n"%(self.entry.func) + data + '\t' + self.entry.func + ',\n')
-			func_list.append(self.entry.func)
-	
-	def enterSymbolArg(self, ctx):
-		self.exitSymStr(ctx.SYMBOL().getText())
-		self.entry.isArg = True
+		sym_str = ctx.SYMBOL().getText()
+		if sym_str not in self.sym_list:
+			self.sym_list.append(Sym(sym_str))
+		
+		self.goBackwardArg(ctx, sym_str)
 
-	def enterRangeArg(self, ctx):
-		global sym_list
+	def visitRangeArg(self, ctx):
+		parent_entry = self.getValue(ctx.parentCtx)
 
 		ranges = ctx.RANGE_SYMBOL().getText()
 		min_num, max_num = ranges[1:-1].split("..") # trim the (<) and (>)
 
 		new_item = Range(ranges, min_num, max_num)
-		if new_item not in sym_list:
-			sym_list.append(new_item)
+		if new_item not in self.sym_list:
+			self.sym_list.append(new_item)
+		
+		self.goBackwardArg(ctx, ranges)
 
-		self.exitSymStr(ranges)
-		self.entry.isArg = True
 
-	def exitSym(self, ctx):
-		self.exitSymStr(ctx.SYMBOL().getText())
+	def visitFinish(self):
+		f = open('cmd_func.c', 'w')
 
-	def exitSymStr(self, current_sym):
-		global sym_list
-		
-		if current_sym not in sym_list:
-			sym_list.append(Sym(current_sym))
-		current_id = sym_list.index(current_sym)
-		
-		if current_id not in self.entry.sym_dict:
-			new_entry = Entry()
-			self.entry.sym_dict[current_id] = new_entry
-			self.entry = new_entry
-		else:
-			self.entry = self.entry.sym_dict.get(current_id)
-		
-	
-	def finish(self):
-		global sym_list
-		global meta_list
-		i = 0
-		f = open('cmd_func.c', 'a')
-		f.write("};\n")		
-		f.close()
-		
-		f = open('symbols.h', 'w')
-		for sym in sym_list:
-			f.write("#define %s %d\n"%(sym.define, i)) # FIXME : when different symbols(RANGE) are the same range, it must cause re-define
-			i = i + 1
-		f.close()
+		for func in self.func_list:
+			f.write("extern int %s(int, char **);\n"%func) 
+		f.write("typedef int (* cmd_func_t)(int, char **);\ncmd_func_t cmd_func[] = {\n")		
+		for func in self.func_list:
+			f.write("\t%s"%func) 
+		f.write("};")
+
+
 
 def cli_exec(zysh_cli):
 	global global_entry
@@ -188,11 +220,9 @@ tree = parser.top()
 # lisp_tree_str = tree.toStringTree(recog=parser)
 # print(lisp_tree_str)
 
-walker = ParseTreeWalker()
-
 # definition phase, collect data
-def_phase = DefPhase()
-walker.walk(def_phase, tree)
-def_phase.finish()
-	
+visitor = DefPhase(global_entry, sym_list, func_list)
+result = visitor.visit(tree)
+
+visitor.visitFinish()
 
