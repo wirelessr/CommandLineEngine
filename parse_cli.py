@@ -78,7 +78,7 @@ class DefPhase(ZyshVisitor):
 
 	def visitVarDecl(self, ctx):
 		name = ctx.meta().getText()
-		self.setValue("varDecl", name)
+		self.setValue(ctx, name)
 		item = self.visit(ctx.syntax())
 
 		if item not in self.sym_list:
@@ -87,18 +87,20 @@ class DefPhase(ZyshVisitor):
 	def visitRangeSyntax(self, ctx):
 		ranges = ctx.RANGES().getText()
 		min_num, max_num = ranges[2:-2].split("..") # trim the ("<) and (">)
-		name = self.getValue("varDecl")
+		name = self.getValue(ctx.parentCtx)
 		return Range(name, min_num, max_num)
 
 	def visitMetaSyntax(self, ctx):
 		syntax = ctx.getText()
-		name = self.getValue("varDecl")
+		name = self.getValue(ctx.parentCtx)
 		return Meta(name, syntax[1:-1]) # trim the double-quotes(")
 
 	def visitBlock(self, ctx):
-		return (ctx.privilege().getText(), ctx.visibility().getText(), ctx.function().getText())
+		return (ctx.privilege().INT().getText(), ctx.visibility().INT().getText(), ctx.function().SYMBOL().getText())
 
 	def visitFunctionDecl(self, ctx):
+		for symbols in ctx.symbols():
+			print("symbols", symbols.getText())
 		privilege, visibility, function = self.visit(ctx.block())
 
 		if function not in self.func_list:
@@ -168,6 +170,13 @@ class DefPhase(ZyshVisitor):
 		
 		self.goBackwardArg(ctx, ranges)
 
+	def visitAlternArg(self, ctx):
+		parent_entry = self.getValue(ctx.parentCtx)
+		
+		self.setValue(ctx, parent_entry)
+		for arg in ctx.arg():
+			self.visit(arg)
+
 
 	def visitFinish(self):
 		f = open('cmd_func.c', 'w')
@@ -176,9 +185,14 @@ class DefPhase(ZyshVisitor):
 			f.write("extern int %s(int, char **);\n"%func) 
 		f.write("typedef int (* cmd_func_t)(int, char **);\ncmd_func_t cmd_func[] = {\n")		
 		for func in self.func_list:
-			f.write("\t%s"%func) 
+			f.write("\t%s,\n"%func) 
 		f.write("};")
 
+		f = open('symbols.h', 'w')
+		i = 0
+		for sym in self.sym_list:
+			f.write("#define %s %d"%(sym.define, i))
+			i = i + 1
 
 
 def cli_exec(zysh_cli):
