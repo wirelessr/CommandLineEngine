@@ -99,8 +99,6 @@ class DefPhase(ZyshVisitor):
 		return (ctx.privilege().INT().getText(), ctx.visibility().INT().getText(), ctx.function().SYMBOL().getText())
 
 	def visitFunctionDecl(self, ctx):
-		for symbols in ctx.symbols():
-			print("symbols", symbols.getText())
 		privilege, visibility, function = self.visit(ctx.block())
 
 		if function not in self.func_list:
