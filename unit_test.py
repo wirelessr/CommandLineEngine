@@ -39,3 +39,7 @@ ASSERT_EQUAL("config hybrid-mode standalone", "config_ap_mode zysh standalone")
 ASSERT_EQUAL("config hybrid-mode manage", "config_ap_mode zysh manage")
 ASSERT_EQUAL("config hybrid-mode controller", "config_ap_mode zysh controller")
 ASSERT_FALSE("config hybrid-mode ap")
+
+ASSERT_EQUAL("config radio-mode wlan1", "config_ap_mode zysh wlan1")
+ASSERT_EQUAL("config radio-mode wlan0 ap", "config_ap_mode zysh wlan0 ap")
+ASSERT_EQUAL("config radio-mode wlan2 monitor", "config_ap_mode zysh wlan2 monitor")

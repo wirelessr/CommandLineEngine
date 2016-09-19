@@ -168,6 +168,14 @@ class DefPhase(ZyshVisitor):
 		
 		self.goBackwardArg(ctx, ranges)
 
+	def visitOptionArg(self, ctx):
+		parent_entry = self.getValue(ctx.parentCtx)
+		
+		parent_entry.func = self.func
+
+		self.setValue(ctx, parent_entry)
+		self.visit(ctx.arg())
+
 	def visitAlternArg(self, ctx):
 		parent_entry = self.getValue(ctx.parentCtx)
 		
@@ -189,7 +197,7 @@ class DefPhase(ZyshVisitor):
 		f = open('symbols.h', 'w')
 		i = 0
 		for sym in self.sym_list:
-			f.write("#define %s %d"%(sym.define, i))
+			f.write("#define %s %d\n"%(sym.define, i))
 			i = i + 1
 
 
