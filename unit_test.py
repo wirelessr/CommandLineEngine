@@ -35,3 +35,7 @@ ASSERT_EQUAL("show interface eth0", "show_interface zysh eth0")
 ASSERT_EQUAL("show interface wlan0", "show_interface zysh wlan0")
 ASSERT_FALSE("show interface eth1")
 
+ASSERT_EQUAL("config hybrid-mode standalone", "config_ap_mode zysh standalone")
+ASSERT_EQUAL("config hybrid-mode manage", "config_ap_mode zysh manage")
+ASSERT_EQUAL("config hybrid-mode controller", "config_ap_mode zysh controller")
+ASSERT_FALSE("config hybrid-mode ap")

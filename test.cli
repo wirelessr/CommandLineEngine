@@ -2,6 +2,13 @@
 %define AP_MAX "<1..4>" "1-4";
 
 %command
+config hybrid-mode % {standalone|manage|controller} = {
+       %privilege 120;
+       %visibility 120;
+       %function config_ap_mode;
+}
+
+%command
 show capwap % ap info = {
 	%privilege 100;
 	%visibility 100;
