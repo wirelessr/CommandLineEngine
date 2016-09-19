@@ -24,6 +24,20 @@ show capwap % ap info = {
 }
 
 %command
+config interface % {vlan|mgnt-vlan} vid <1..100> = {
+       %privilege 120;
+       %visibility 120;
+       %function config_interface;
+}
+
+//%command
+//config interface % {vlan|mgnt-vlan} {vid <1..100>|port ETH} = {
+//     %privilege 120;
+//     %visibility 120;
+//     %function config_ap_mode;
+//}
+
+%command
 show capwap % ap idx AP_MAX = {
 	%privilege 100;
 	%visibility 100;

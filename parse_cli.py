@@ -66,9 +66,7 @@ class DefPhase(ZyshVisitor):
 		self.sym_list = sym_list
 		self.func_list = func_list
 		self.func = ""
-
-		f = open('cmd_func.c', 'w')
-		f.close()
+		self.memory = []
 
 	def getValue(self, node):
 		return self.tree_property[node]
@@ -140,6 +138,7 @@ class DefPhase(ZyshVisitor):
 		
 		if len(ctx.arg()) == 0:
 			current_entry.func = self.func
+			self.memory.append(current_entry)
 			return 
 
 		self.setValue(ctx, current_entry)
@@ -171,6 +170,7 @@ class DefPhase(ZyshVisitor):
 	def visitOptionArg(self, ctx):
 		parent_entry = self.getValue(ctx.parentCtx)
 		
+		self.memory.append(parent_entry)
 		parent_entry.func = self.func
 
 		self.setValue(ctx, parent_entry)
@@ -178,11 +178,25 @@ class DefPhase(ZyshVisitor):
 
 	def visitAlternArg(self, ctx):
 		parent_entry = self.getValue(ctx.parentCtx)
-		
+	
+		self.memory = []
+
 		self.setValue(ctx, parent_entry)
 		for arg in ctx.arg():
 			self.visit(arg)
 
+		if ctx.arg2() is not None:
+			cache_memory = self.memory[:]
+			for entry in cache_memory:
+				self.setValue(ctx, entry)
+				self.visit(ctx.arg2())
+
+	def visitArg2(self, ctx):
+		parent_entry = self.getValue(ctx.parentCtx)
+
+		self.setValue(ctx, parent_entry)
+		self.visit(ctx.arg())
+		
 
 	def visitFinish(self):
 		f = open('cmd_func.c', 'w')

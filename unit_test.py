@@ -43,3 +43,15 @@ ASSERT_FALSE("config hybrid-mode ap")
 ASSERT_EQUAL("config radio-mode wlan1", "config_ap_mode zysh wlan1")
 ASSERT_EQUAL("config radio-mode wlan0 ap", "config_ap_mode zysh wlan0 ap")
 ASSERT_EQUAL("config radio-mode wlan2 monitor", "config_ap_mode zysh wlan2 monitor")
+
+ASSERT_EQUAL("config interface vlan vid 10", "config_interface zysh vlan vid 10")
+ASSERT_EQUAL("config interface mgnt-vlan vid 10", "config_interface zysh mgnt-vlan vid 10")
+'''
+ASSERT_EQUAL("config interface vlan port eth0", "config_interface zysh vlan port eth0")
+ASSERT_EQUAL("config interface mgnt-vlan port eth1", "config_interface zysh mgnt-vlan port eth1")
+
+ASSERT_FALSE("config interface vlan vid 1000")
+ASSERT_FALSE("config interface mgnt-vlan vid 1000")
+ASSERT_FALSE("config interface mgnt-vlan port 1000")
+ASSERT_FALSE("config interface vlan port eth3")
+'''
