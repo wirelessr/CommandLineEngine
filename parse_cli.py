@@ -1,4 +1,3 @@
-import sys
 import re
 
 from antlr4 import *
@@ -82,6 +81,8 @@ class DefPhase(ZyshVisitor):
 
 		if item not in self.sym_list:
 			self.sym_list.append(item)
+		else:
+			raise
 
 	def visitRangeSyntax(self, ctx):
 		ranges = ctx.RANGES().getText()
