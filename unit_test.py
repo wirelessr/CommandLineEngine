@@ -53,3 +53,5 @@ ASSERT_FALSE("config interface vlan vid 1000")
 ASSERT_FALSE("config interface mgnt-vlan vid 1000")
 ASSERT_FALSE("config interface mgnt-vlan port 1000")
 ASSERT_FALSE("config interface vlan port eth3")
+
+ASSERT_FALSE("config interface vlan")
