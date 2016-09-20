@@ -6,7 +6,7 @@ extern cmd_func_t cmd_func[];
 int
 main(int argc, char *argv[])
 {
-    PyObject *pName, *pModule, *pDict, *pFunc;
+    PyObject *pName, *pModule, *pFunc;
     PyObject *pArgs, *pValue;
     int i;
 

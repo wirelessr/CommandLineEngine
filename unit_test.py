@@ -3,7 +3,40 @@
 import sys
 import shlex, subprocess
 
+pass_cnt = 0
+fail_cnt = 0
+test_id = 0
+fail_record = []
+
+def summary(pass_cnt, fail_cnt, fail_record):
+	print()
+	print("PASS:", pass_cnt)
+	print("FAIL:", fail_cnt)
+	for i, s in fail_record:
+		print("[%d] %s"%(i, s))
+	if fail_cnt > 0:
+		sys.exit(1)
+
+def fail(command_line, expect_result=None, real_result=None):
+	global fail_cnt, test_id, fail_record
+	fail_cnt += 1
+	test_id += 1
+	print("-", end="", flush=True)
+
+	if expect_result is not None:
+		fail_string = "command:"+command_line+", expect:"+expect_result+"\n  but real:"+real_result
+	else:
+		fail_string = "failed"
+	fail_record.append((test_id, fail_string))
+
+def success():
+	global pass_cnt, test_id
+	pass_cnt += 1
+	test_id += 1
+	print("+", end="", flush=True)
+
 def ASSERT_EQUAL(command_line, expect_result):
+	command_input = command_line
 	command_line = "./zysh parse_cli cli_exec \"" + command_line + "\""
 	args = shlex.split(command_line)
 
@@ -11,9 +44,12 @@ def ASSERT_EQUAL(command_line, expect_result):
 	outs, errs = proc.communicate()
 
 	if errs.decode().strip() != expect_result:
-		raise
+		fail(command_input, expect_result, errs.decode().strip())
+	else:
+		success()
 
 def ASSERT_FALSE(command_line):
+	command_input = command_line
 	command_line = "./zysh parse_cli cli_exec \"" + command_line + "\""
 	args = shlex.split(command_line)
 
@@ -21,7 +57,9 @@ def ASSERT_FALSE(command_line):
 	outs, errs = proc.communicate()
 
 	if proc.returncode == 0:
-		raise
+		fail(command_input, "False", "True")
+	else:
+		success()
 
 ASSERT_FALSE("show capwap ap in")
 ASSERT_EQUAL("show capwap ap info", "show_ap_info zysh ap info")
@@ -55,3 +93,5 @@ ASSERT_FALSE("config interface mgnt-vlan port 1000")
 ASSERT_FALSE("config interface vlan port eth3")
 
 ASSERT_FALSE("config interface vlan")
+
+summary(pass_cnt, fail_cnt, fail_record)
