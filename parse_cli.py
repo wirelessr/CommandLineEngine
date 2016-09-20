@@ -67,6 +67,7 @@ class DefPhase(ZyshVisitor):
 		self.func_list = func_list
 		self.func = ""
 		self.memory = []
+		self.hasArg2 = False
 
 	def getValue(self, node):
 		return self.tree_property[node]
@@ -137,7 +138,8 @@ class DefPhase(ZyshVisitor):
 			current_entry = parent_entry.sym_dict[sym_id]
 		
 		if len(ctx.arg()) == 0:
-			current_entry.func = self.func
+			if not self.hasArg2:
+				current_entry.func = self.func
 			self.memory.append(current_entry)
 			return 
 
@@ -180,6 +182,8 @@ class DefPhase(ZyshVisitor):
 		parent_entry = self.getValue(ctx.parentCtx)
 	
 		self.memory = []
+		if ctx.arg2() is not None:
+			self.hasArg2 = True
 
 		self.setValue(ctx, parent_entry)
 		for arg in ctx.arg():
@@ -189,6 +193,7 @@ class DefPhase(ZyshVisitor):
 			cache_memory = self.memory[:]
 			for entry in cache_memory:
 				self.setValue(ctx, entry)
+				self.hasArg2 = False
 				self.visit(ctx.arg2())
 
 	def visitArg2(self, ctx):
