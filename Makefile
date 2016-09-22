@@ -12,10 +12,18 @@ check: all
 	@./unit_test.py || exit 1
 
 all: prep
+	@echo "Build Core Binary"
+	@echo -n "."
 	@gcc -O0 -g $(CFLAGS) $(SRCS) $(PREP_SRC) -o zysh $(LDFLAGS)
+	@echo "."
 
 prep:
+	@echo "Gernerate Meta Data"
+	@echo -n "."
 	@rm -f $(PREP_SRC)
+	@echo -n "."
 	@$(antlr4py3) -visitor Zysh.g4
+	@echo -n "."
 	@python3 parse_cli.py
+	@echo "."
 
