@@ -94,4 +94,10 @@ ASSERT_FALSE("config interface vlan port eth3")
 
 ASSERT_FALSE("config interface vlan")
 
+ASSERT_EQUAL("?", "show config")
+ASSERT_EQUAL("show ?", "capwap interface")
+ASSERT_EQUAL("show capwap ?", "vlan ap")
+ASSERT_EQUAL("show capwap vlan ?", "<1..50>")
+
+
 summary(pass_cnt, fail_cnt, fail_record)

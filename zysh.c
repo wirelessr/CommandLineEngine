@@ -56,7 +56,18 @@ main(int argc, char *argv[])
 						cmd_argv[i] = PyBytes_AsString(PyList_GetItem(pValue, i));
 					}
 					i = PyLong_AsLong(PyList_GetItem(pValue, 0));
-					cmd_func[i](total, cmd_argv);	/* TODO */
+
+					if(i >= 0)
+					{
+						cmd_func[i](total, cmd_argv);	/* TODO */
+					}
+					else
+					{
+						for(i = 1; i < total; i++)
+						{
+							fprintf(stderr, "%s ", cmd_argv[i]);
+						}
+					}
                 }
 				Py_DECREF(pValue);
             }

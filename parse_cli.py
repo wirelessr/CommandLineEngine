@@ -11,6 +11,7 @@ class Sym:
 	def __init__(self, id):
 		self.name = id
 		self.define = "SYM_%s"%id.upper()
+		self.helper = id
 	
 	def match(self, token):
 		return token == self.name
@@ -58,6 +59,12 @@ global_entry = Entry()
 func_list = []
 sym_list = []
 
+def listEntryTree(entry, prefix=""):
+	global sym_list
+	for sym_id in entry.sym_dict:
+		print(prefix, sym_list[sym_id].name)
+		listEntryTree(entry.sym_dict[sym_id], prefix+"  ")
+
 class DefPhase(ZyshVisitor):
 	def __init__(self, global_entry, sym_list, func_list):
 		self.tree_property = {}
@@ -74,10 +81,15 @@ class DefPhase(ZyshVisitor):
 	def setValue(self, node, value):
 		self.tree_property[node] = value
 
+	def visitHelper(self, ctx):
+		helper = ctx.getText()
+		return helper[1:-1] # trim the double-quotes(")
+
 	def visitVarDecl(self, ctx):
 		name = ctx.meta().getText()
 		self.setValue(ctx, name)
 		item = self.visit(ctx.syntax())
+		item.helper = self.visit(ctx.helper())
 
 		if item not in self.sym_list:
 			self.sym_list.append(item)
@@ -138,7 +150,7 @@ class DefPhase(ZyshVisitor):
 		else:
 			current_entry = parent_entry.sym_dict[sym_id]
 		
-		if len(ctx.arg()) == 0:
+		if ctx.arg() is None:
 			if not self.hasArg2:
 				current_entry.func = self.func
 			self.memory.append(current_entry)
@@ -146,12 +158,9 @@ class DefPhase(ZyshVisitor):
 
 		self.setValue(ctx, current_entry)
 
-		for arg in ctx.arg():
-			self.visit(arg)
+		self.visit(ctx.arg())
 
 	def visitSymbolArg(self, ctx):
-		parent_entry = self.getValue(ctx.parentCtx)
-
 		sym_str = ctx.SYMBOL().getText()
 		if sym_str not in self.sym_list:
 			self.sym_list.append(Sym(sym_str))
@@ -159,12 +168,11 @@ class DefPhase(ZyshVisitor):
 		self.goBackwardArg(ctx, sym_str)
 
 	def visitRangeArg(self, ctx):
-		parent_entry = self.getValue(ctx.parentCtx)
-
 		ranges = ctx.RANGE_SYMBOL().getText()
 		min_num, max_num = ranges[1:-1].split("..") # trim the (<) and (>)
 
 		new_item = Range(ranges, min_num, max_num)
+		new_item.helper = ranges
 		if new_item not in self.sym_list:
 			self.sym_list.append(new_item)
 		
@@ -233,6 +241,13 @@ def cli_exec(zysh_cli):
 	
 	current_entry = global_entry
 	for s in zysh_cli.split():
+		if s == '?':
+			arg_list = [-1]
+			for sym_id in current_entry.sym_dict:
+				arg_list.append(sym_list[sym_id].helper.encode())
+			listEntryTree(global_entry)
+			return arg_list
+
 		for sym_id in current_entry.sym_dict:
 			if sym_list[sym_id].match(s):
 				current_entry = current_entry.sym_dict[sym_id]
