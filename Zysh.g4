@@ -19,10 +19,11 @@ sym: SYMBOL ;
 meta: SYMBOL ;
 arg : SYMBOL arg?			# symbolArg
 	| RANGE_SYMBOL arg?		# rangeArg
-	| '[' arg ']'			# optionArg
+	| '[' arg ']' arg3?			# optionArg
 	| '{' arg ('|' arg)+ '}' arg2?	# alternArg
 	;
 arg2: arg ;
+arg3: arg ;
 block:  '{' privilege? visibility? function '}' ;	
 	
 privilege: '%privilege' INT	';' ;

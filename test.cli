@@ -3,6 +3,7 @@
 %define RADIO_SLOT "(wlan0|wlan1|wlan2)" "wlan0 or wlan1 or wlan2";
 %help ETH "For now, only support eth0..eth2";
 %define ETH "(eth0|eth1|eth2)" "<ethX>";
+%define PROFILE_NAME "[a-zA-z]{1,10}" "letters";
 
 %command
 config hybrid-mode % {standalone|manage|controller} = {
@@ -73,5 +74,12 @@ config interface % ETH {[idx <1..10>]|[fast path activate]} = {
 	%privilege 100;
 	%visibility 100;
 	%function config_interface;
+}
+
+%command
+config profile % PROFILE_NAME [idx <1..10>] [num <1..100>] [value <1..1000>] [activate] = {
+	%privilege 120;
+	%visibility 120;
+	%function config_profile;
 }
 

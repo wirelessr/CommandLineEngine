@@ -73,8 +73,10 @@ class DefPhase(ZyshVisitor):
 		self.sym_list = sym_list
 		self.func_list = func_list
 		self.func = ""
-		self.memory = []
+		self.memory2 = []
+		self.memory3 = []
 		self.hasArg2 = False
+		self.hasArg3 = False
 
 	def getValue(self, node):
 		return self.tree_property[node]
@@ -171,7 +173,8 @@ class DefPhase(ZyshVisitor):
 		if ctx.arg() is None:
 			if not self.hasArg2:
 				current_entry.func = self.func
-			self.memory.append(current_entry)
+			self.memory2.append(current_entry)
+			self.memory3.append(current_entry)
 			return 
 
 		self.setValue(ctx, current_entry)
@@ -199,16 +202,29 @@ class DefPhase(ZyshVisitor):
 	def visitOptionArg(self, ctx):
 		parent_entry = self.getValue(ctx.parentCtx)
 		
-		self.memory.append(parent_entry)
-		parent_entry.func = self.func
+		self.memory2.append(parent_entry)
+		self.memory3.append(parent_entry)
+
+		if ctx.arg3() is None:
+			parent_entry.func = self.func
+		else:
+			self.hasArg3 = True
+			self.memory3 = [parent_entry]
 
 		self.setValue(ctx, parent_entry)
 		self.visit(ctx.arg())
 
+		if ctx.arg3() is not None:
+			cache_memory = self.memory3[:]
+			for entry in cache_memory:
+				self.setValue(ctx, entry)
+				self.hasArg3 = False
+				self.visit(ctx.arg3())
+
 	def visitAlternArg(self, ctx):
 		parent_entry = self.getValue(ctx.parentCtx)
 	
-		self.memory = []
+		self.memory2 = []
 		if ctx.arg2() is not None:
 			self.hasArg2 = True
 
@@ -217,7 +233,7 @@ class DefPhase(ZyshVisitor):
 			self.visit(arg)
 
 		if ctx.arg2() is not None:
-			cache_memory = self.memory[:]
+			cache_memory = self.memory2[:]
 			for entry in cache_memory:
 				self.setValue(ctx, entry)
 				self.hasArg2 = False
@@ -229,6 +245,11 @@ class DefPhase(ZyshVisitor):
 		self.setValue(ctx, parent_entry)
 		self.visit(ctx.arg())
 		
+	def visitArg3(self, ctx):
+		parent_entry = self.getValue(ctx.parentCtx)
+
+		self.setValue(ctx, parent_entry)
+		self.visit(ctx.arg())
 
 	def visitFinish(self):
 		f = open('cmd_func.c', 'w')
@@ -298,4 +319,6 @@ visitor = DefPhase(global_entry, sym_list, func_list)
 result = visitor.visit(tree)
 
 visitor.visitFinish()
+
+# listEntryTree(global_entry)
 

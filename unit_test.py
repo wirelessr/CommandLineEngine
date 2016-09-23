@@ -125,4 +125,13 @@ ASSERT_FALSE("config interface eth1 idx 50")
 ASSERT_FALSE("config interface eth1 fast path")
 ASSERT_EQUAL("config interface eth0 fast path activate", "config_interface zysh eth0 fast path activate")
 
+ASSERT_EQUAL("config profile NAMEXX", "config_profile zysh NAMEXX")
+ASSERT_EQUAL("config profile NAMEXX idx 1", "config_profile zysh NAMEXX idx 1")
+ASSERT_EQUAL("config profile NAMEXX num 10", "config_profile zysh NAMEXX num 10")
+ASSERT_EQUAL("config profile NAMEXX idx 1 num 10", "config_profile zysh NAMEXX idx 1 num 10")
+ASSERT_EQUAL("config profile NAMEXX value 100", "config_profile zysh NAMEXX value 100")
+ASSERT_EQUAL("config profile NAMEXX idx 1 value 100", "config_profile zysh NAMEXX idx 1 value 100")
+ASSERT_EQUAL("config profile NAMEXX idx 1 value 100 activate", "config_profile zysh NAMEXX idx 1 value 100 activate")
+ASSERT_FALSE("config profile NAMEXX activate value 100")
+
 summary(pass_cnt, fail_cnt, fail_record)
