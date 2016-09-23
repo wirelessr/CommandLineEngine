@@ -212,7 +212,8 @@ class DefPhase(ZyshVisitor):
 			self.memory3 = [parent_entry]
 
 		self.setValue(ctx, parent_entry)
-		self.visit(ctx.arg())
+		for arg in ctx.arg():
+			self.visit(arg)
 
 		if ctx.arg3() is not None:
 			cache_memory = self.memory3[:]

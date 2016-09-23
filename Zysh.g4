@@ -1,6 +1,6 @@
 grammar Zysh;
 
-top:   (functionDecl | varDecl | helpDecl)+ ;
+top:   (functionDecl | varDecl | helpDecl | reserved)+ ;
 
 varDecl
     :   '%define' meta syntax helper ';'
@@ -14,13 +14,17 @@ functionDecl
     :   '%command' symbols (';' symbols)* '=' block
     ;	
 	
+reserved
+    :   '%reserved' symbols (';' symbols)* '=' block
+    ;	
+	
 symbols: sym+ ('%' arg)? ;
 sym: SYMBOL ;
 meta: SYMBOL ;
 arg : SYMBOL arg?			# symbolArg
 	| RANGE_SYMBOL arg?		# rangeArg
-	| '[' arg ']' arg3?			# optionArg
-	| '{' arg ('|' arg)+ '}' arg2?	# alternArg
+	| '[' arg ('|' arg)* ']' arg3?	# optionArg
+	| '{' arg ('|' arg)* '}' arg2?	# alternArg
 	;
 arg2: arg ;
 arg3: arg ;
