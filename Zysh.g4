@@ -14,7 +14,7 @@ functionDecl
     :   '%command' symbols (';' symbols)* '=' block
     ;	
 	
-symbols: sym+ '%' arg ;
+symbols: sym+ ('%' arg)? ;
 sym: SYMBOL ;
 meta: SYMBOL ;
 arg : SYMBOL arg?			# symbolArg
@@ -23,7 +23,7 @@ arg : SYMBOL arg?			# symbolArg
 	| '{' arg ('|' arg)+ '}' arg2?	# alternArg
 	;
 arg2: arg ;
-block:  '{' privilege visibility function '}' ;	
+block:  '{' privilege? visibility? function '}' ;	
 	
 privilege: '%privilege' INT	';' ;
 visibility: '%visibility' INT ';' ;
@@ -41,9 +41,11 @@ syntax : RANGES # rangeSyntax
 
 helper : STRING ;
 RANGES : '"<' INT '..' INT '>"' ;
-STRING :  '"' (~'"')* '"' ;
+STRING :  '"' (ESC | ~'"')* '"' ;
 SYMBOL : ('_' | LETTER) (LETTER | DIGIT | '_' | '-')* ;
 RANGE_SYMBOL : '<' INT '..' INT '>' ;
+
+fragment ESC :   '\\' ["\\] ;
 
 WS  :   [ \t\n\r]+ -> skip ;
 

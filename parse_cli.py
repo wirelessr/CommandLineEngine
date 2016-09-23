@@ -113,7 +113,17 @@ class DefPhase(ZyshVisitor):
 		return Meta(name, syntax[1:-1]) # trim the double-quotes(")
 
 	def visitBlock(self, ctx):
-		return (ctx.privilege().INT().getText(), ctx.visibility().INT().getText(), ctx.function().SYMBOL().getText())
+		if ctx.privilege() is not None:
+			privilege = ctx.privilege().INT().getText()
+		else:
+			privilege = "100"
+
+		if ctx.visibility() is not None:
+			visibility = ctx.visibility().INT().getText()
+		else:
+			visibility = "100"
+
+		return (privilege, visibility, ctx.function().SYMBOL().getText())
 
 	def visitFunctionDecl(self, ctx):
 		privilege, visibility, function = self.visit(ctx.block())
@@ -141,8 +151,11 @@ class DefPhase(ZyshVisitor):
 				else:
 					current_entry = current_entry.sym_dict[sym_id]
 			
-			self.setValue(symbols, current_entry)
-			self.visit(symbols.arg())
+			if symbols.arg() is not None:
+				self.setValue(symbols, current_entry)
+				self.visit(symbols.arg())
+			else:
+				current_entry.func = function
 
 	def goBackwardArg(self, ctx, sym_str):
 		parent_entry = self.getValue(ctx.parentCtx)
