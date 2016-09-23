@@ -35,6 +35,7 @@ config interface % {vlan|mgnt-vlan} {vid <1..100>|port ETH} = {
 }
 
 %command
+show capwap % profile PROFILE_NAME;
 show capwap % ap idx AP_MAX = {
 	%privilege 100;
 	%visibility 100;
@@ -77,6 +78,7 @@ config interface % ETH {[idx <1..10>]|[fast path activate]} = {
 }
 
 %command
+config profile % PROFILE_NAME [nested setting [level <1..10> [<1..5> inner [end of all]]]];
 config profile % PROFILE_NAME [idx <1..10>] [num <1..100>] [value <1..1000>] [activate] = {
 	%privilege 120;
 	%visibility 120;

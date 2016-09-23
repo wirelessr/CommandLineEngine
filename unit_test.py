@@ -85,6 +85,7 @@ ASSERT_EQUAL("show capwap ap idx 2", "show_ap_info zysh ap idx 2")
 ASSERT_FALSE("show capwap ap idx 5")
 ASSERT_EQUAL("show capwap vlan 20", "show_ap_vlan zysh vlan 20")
 ASSERT_FALSE("show capwap vlan 200")
+ASSERT_EQUAL("show capwap profile NAMEXX", "show_ap_info zysh profile NAMEXX")
 ASSERT_EQUAL("show interface eth0", "show_interface zysh eth0")
 ASSERT_EQUAL("show interface wlan0", "show_interface zysh wlan0")
 ASSERT_FALSE("show interface eth1")
@@ -114,7 +115,7 @@ ASSERT_FALSE("config interface vlan")
 
 ASSERT_EQUAL_LIST("?", "show config")
 ASSERT_EQUAL_LIST("show ?", "capwap interface")
-ASSERT_EQUAL_LIST("show capwap ?", "vlan ap")
+ASSERT_EQUAL_LIST("show capwap ?", "vlan ap profile")
 ASSERT_EQUAL_LIST("show capwap vlan ?", "<1..50>")
 
 ASSERT_EQUAL("config interface eth0", "config_interface zysh eth0")
@@ -133,5 +134,10 @@ ASSERT_EQUAL("config profile NAMEXX value 100", "config_profile zysh NAMEXX valu
 ASSERT_EQUAL("config profile NAMEXX idx 1 value 100", "config_profile zysh NAMEXX idx 1 value 100")
 ASSERT_EQUAL("config profile NAMEXX idx 1 value 100 activate", "config_profile zysh NAMEXX idx 1 value 100 activate")
 ASSERT_FALSE("config profile NAMEXX activate value 100")
+
+ASSERT_EQUAL("config profile NAMESS nested setting", "config_profile zysh NAMESS nested setting")
+ASSERT_EQUAL("config profile NAMESS nested setting level 1", "config_profile zysh NAMESS nested setting level 1")
+ASSERT_EQUAL("config profile NAMESS nested setting level 1 5 inner", "config_profile zysh NAMESS nested setting level 1 5 inner")
+ASSERT_EQUAL("config profile NAMESS nested setting level 1 5 inner end of all", "config_profile zysh NAMESS nested setting level 1 5 inner end of all")
 
 summary(pass_cnt, fail_cnt, fail_record)
