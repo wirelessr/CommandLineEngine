@@ -12,7 +12,7 @@ config hybrid-mode % {standalone|manage|controller} = {
 }
 
 %command
-config radio-mode % RADIO_SLOT [{ap|monitor}] = {
+config radio-mode % RADIO_SLOT [{ap [off]|monitor [off]}] = {
        %privilege 120;
        %visibility 120;
        %function config_ap_mode;
@@ -67,3 +67,11 @@ show interface % all = {
 	%visibility 100;
 	%function show_interface;
 }
+
+%command
+config interface % ETH {[idx <1..10>]|[fast path activate]} = {
+	%privilege 100;
+	%visibility 100;
+	%function config_interface;
+}
+

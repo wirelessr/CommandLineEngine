@@ -48,6 +48,22 @@ def ASSERT_EQUAL(command_line, expect_result):
 	else:
 		success()
 
+def ASSERT_EQUAL_LIST(command_line, expect_list_result):
+	command_input = command_line
+	command_line = "./zysh parse_cli cli_exec \"" + command_line + "\""
+	args = shlex.split(command_line)
+
+	proc = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+	outs, errs = proc.communicate()
+
+	real_list_result = errs.decode().split()
+	for tok in expect_list_result.split():
+		if tok not in real_list_result:
+			fail(command_input, expect_list_result, errs.decode().strip())
+			break
+	else:
+		success()
+
 def ASSERT_FALSE(command_line):
 	command_input = command_line
 	command_line = "./zysh parse_cli cli_exec \"" + command_line + "\""
@@ -81,6 +97,8 @@ ASSERT_FALSE("config hybrid-mode ap")
 ASSERT_EQUAL("config radio-mode wlan1", "config_ap_mode zysh wlan1")
 ASSERT_EQUAL("config radio-mode wlan0 ap", "config_ap_mode zysh wlan0 ap")
 ASSERT_EQUAL("config radio-mode wlan2 monitor", "config_ap_mode zysh wlan2 monitor")
+ASSERT_EQUAL("config radio-mode wlan0 ap off", "config_ap_mode zysh wlan0 ap off")
+ASSERT_EQUAL("config radio-mode wlan2 monitor off", "config_ap_mode zysh wlan2 monitor off")
 
 ASSERT_EQUAL("config interface vlan vid 10", "config_interface zysh vlan vid 10")
 ASSERT_EQUAL("config interface mgnt-vlan vid 10", "config_interface zysh mgnt-vlan vid 10")
@@ -94,10 +112,17 @@ ASSERT_FALSE("config interface vlan port eth3")
 
 ASSERT_FALSE("config interface vlan")
 
-ASSERT_EQUAL("?", "show config")
-ASSERT_EQUAL("show ?", "capwap interface")
-ASSERT_EQUAL("show capwap ?", "vlan ap")
-ASSERT_EQUAL("show capwap vlan ?", "<1..50>")
+ASSERT_EQUAL_LIST("?", "show config")
+ASSERT_EQUAL_LIST("show ?", "capwap interface")
+ASSERT_EQUAL_LIST("show capwap ?", "vlan ap")
+ASSERT_EQUAL_LIST("show capwap vlan ?", "<1..50>")
 
+ASSERT_EQUAL("config interface eth0", "config_interface zysh eth0")
+ASSERT_EQUAL("config interface eth1 idx 5", "config_interface zysh eth1 idx 5")
+ASSERT_FALSE("config interface eth2 idx")
+ASSERT_FALSE("config interface eth3")
+ASSERT_FALSE("config interface eth1 idx 50")
+ASSERT_FALSE("config interface eth1 fast path")
+ASSERT_EQUAL("config interface eth0 fast path activate", "config_interface zysh eth0 fast path activate")
 
 summary(pass_cnt, fail_cnt, fail_record)
