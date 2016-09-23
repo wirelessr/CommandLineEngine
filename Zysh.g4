@@ -1,10 +1,14 @@
 grammar Zysh;
 
-top:   (functionDecl | varDecl)+ ;
+top:   (functionDecl | varDecl | helpDecl)+ ;
 
 varDecl
     :   '%define' meta syntax helper ';'
     ;
+
+helpDecl
+	:	'%help' meta helper ';'
+	;
 
 functionDecl
     :   '%command' symbols (';' symbols)* '=' block

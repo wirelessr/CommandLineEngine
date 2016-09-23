@@ -1,6 +1,7 @@
 %define IF "(eth0|wlan0)" "<eth0 or wlan0>";
 %define AP_MAX "<1..4>" "1-4";
 %define RADIO_SLOT "(wlan0|wlan1|wlan2)" "wlan0 or wlan1 or wlan2";
+%help ETH "For now, only support eth0..eth2";
 %define ETH "(eth0|eth1|eth2)" "<ethX>";
 
 %command

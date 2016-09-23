@@ -58,6 +58,7 @@ class Entry:
 global_entry = Entry()
 func_list = []
 sym_list = []
+helper_dict = {}
 
 def listEntryTree(entry, prefix=""):
 	global sym_list
@@ -95,6 +96,10 @@ class DefPhase(ZyshVisitor):
 			self.sym_list.append(item)
 		else:
 			raise
+	
+	def visitHelpDecl(self, ctx):
+		global helper_dict
+		helper_dict[ctx.meta().getText()] = self.visit(ctx.helper())
 
 	def visitRangeSyntax(self, ctx):
 		ranges = ctx.RANGES().getText()
