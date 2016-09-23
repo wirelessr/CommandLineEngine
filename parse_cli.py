@@ -115,17 +115,20 @@ class DefPhase(ZyshVisitor):
 		return Meta(name, syntax[1:-1]) # trim the double-quotes(")
 
 	def visitBlock(self, ctx):
-		if ctx.privilege() is not None:
-			privilege = ctx.privilege().INT().getText()
-		else:
-			privilege = "100"
+		privilege = "100"
+		visibility = "100"
 
-		if ctx.visibility() is not None:
-			visibility = ctx.visibility().INT().getText()
-		else:
-			visibility = "100"
+		for block_attr in ctx.block_attr():
+			ruleIdx = block_attr.getChild(0).getRuleIndex()
+			
+			if ruleIdx == ZyshParser.RULE_privilege:
+				privilege = block_attr.privilege().INT().getText()
+			elif ruleIdx == ZyshParser.RULE_visibility:
+				visibility = block_attr.visibility().INT().getText()
+			elif ruleIdx == ZyshParser.RULE_function:
+				function = block_attr.function().SYMBOL().getText()
 
-		return (privilege, visibility, ctx.function().SYMBOL().getText())
+		return (privilege, visibility, function)
 
 	def visitFunctionDecl(self, ctx):
 		privilege, visibility, function = self.visit(ctx.block())

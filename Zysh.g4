@@ -28,8 +28,14 @@ arg : SYMBOL arg?			# symbolArg
 	;
 arg2: arg ;
 arg3: arg ;
-block:  '{' privilege? visibility? function '}' ;	
-	
+block:  '{' block_attr+ '}' ;
+
+block_attr 
+	: privilege
+	| visibility
+	| function
+	;
+
 privilege: '%privilege' INT	';' ;
 visibility: '%visibility' INT ';' ;
 function: '%function' SYMBOL ';' ;
