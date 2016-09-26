@@ -1,23 +1,24 @@
 grammar Zysh;
 
-top:   (functionDecl | varDecl | helpDecl | reserved)+ ;
+top:   (functionDecl | varDecl | helpDecl | filterDecl)+ ;
 
 varDecl
     :   '%define' meta syntax helper ';'
     ;
 
 helpDecl
-	:	'%help' meta helper ';'
+	:	'%help' helpsym helper ';'
 	;
 
 functionDecl
     :   '%command' symbols (';' symbols)* '=' block
+	|   '%reserved' symbols (';' symbols)* '=' block
     ;	
 	
-reserved
-    :   '%reserved' symbols (';' symbols)* '=' block
-    ;	
-	
+filterDecl
+	:	'%filter' symbols '=' block
+	;
+
 symbols: sym+ ('%' arg)? ;
 sym: SYMBOL ;
 meta: SYMBOL ;
@@ -50,11 +51,16 @@ syntax : RANGES # rangeSyntax
        | STRING	# metaSyntax
        ;
 
-helper : STRING ;
+helper : RANGES
+	| STRING 
+	;
+helpsym : SYMBOL
+	| RANGE_SYMBOL
+	;
 RANGES : '"<' INT '..' INT '>"' ;
 STRING :  '"' (ESC | ~'"')* '"' ;
-SYMBOL : ('_' | LETTER) (LETTER | DIGIT | '_' | '-')* ;
-RANGE_SYMBOL : '<' INT '..' INT '>' ;
+SYMBOL : (LETTER | DIGIT | '_' | '-')+ ;
+RANGE_SYMBOL : '<' INT ' '* '..' ' '* INT '>' ;
 
 fragment ESC :   '\\' ["\\] ;
 

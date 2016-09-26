@@ -97,11 +97,11 @@ class DefPhase(ZyshVisitor):
 		if item not in self.sym_list:
 			self.sym_list.append(item)
 		else:
-			raise
+			print("WARNING:", name, "is redefined")
 	
 	def visitHelpDecl(self, ctx):
 		global helper_dict
-		helper_dict[ctx.meta().getText()] = self.visit(ctx.helper())
+		helper_dict[ctx.getText()] = self.visit(ctx.helper())
 
 	def visitRangeSyntax(self, ctx):
 		ranges = ctx.RANGES().getText()
