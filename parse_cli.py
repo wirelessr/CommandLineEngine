@@ -48,7 +48,12 @@ if not %d <= $INT.int <= %d:\n\
 	raise RecognitionException($INT.text + \" is not between %d and %d\")\n\
 }"%(self.min, self.max, self.min, self.max) )
 		return context
-
+	
+	def __eq__(self, other):
+		if type(other) is str:
+			return self.name == other
+		return self.name == other.name	
+				
 func_list = []
 sym_list = []
 helper_dict = {}
@@ -72,9 +77,11 @@ class DefPhase(ZyshVisitor):
 
 		if item not in self.sym_list:
 			self.sym_list.append(item)
-			self.rule_map[item.g4] = item.rule()
 		else:
 			print("WARNING:", name, "is redefined")
+			
+		if item.g4 not in self.rule_map:
+			self.rule_map[item.g4] = item.rule()
 	
 	def visitHelpDecl(self, ctx):
 		global helper_dict
@@ -160,6 +167,9 @@ class DefPhase(ZyshVisitor):
 		new_item.helper = ranges
 		if new_item not in self.sym_list:
 			self.sym_list.append(new_item)
+
+		if new_item.g4 not in self.rule_map:
+			self.rule_map[new_item.g4] = new_item.rule()
 		
 		sym_id = self.sym_list.index(new_item)
 
@@ -223,6 +233,10 @@ top: ("
 		for rule in self.rule_map:
 			file_context += (rule + " : " + self.rule_map[rule] + ";\n")
 		
+		file_context += "TEXT : ~[ \\n\\r]+ ;\n\
+INT :   '0' | '1'..'9' '0'..'9'* ;\n\
+WS  :   [ \\t\\n\\r]+ -> skip ;\n"
+
 		print(file_context)
 		f = open('Cooked.g4', 'w')
 		f.write(file_context)
