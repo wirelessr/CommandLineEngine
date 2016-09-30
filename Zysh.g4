@@ -24,11 +24,10 @@ sym: SYMBOL ;
 meta: SYMBOL ;
 arg : SYMBOL arg?			# symbolArg
 	| RANGE_SYMBOL arg?		# rangeArg
-	| '[' arg ('|' arg)* ']' arg3?	# optionArg
+	| '[' arg ('|' arg)* ']' arg2?	# optionArg
 	| '{' arg ('|' arg)* '}' arg2?	# alternArg
 	;
 arg2: arg ;
-arg3: arg ;
 block:  '{' block_attr+ '}' ;
 
 block_attr 

@@ -4,7 +4,7 @@ LDFLAGS=$(shell python3-config --ldflags)
 PREP_SRC=cmd_func.c
 SRCS=zysh.c zyshd.c
 
-antlr4=java -Xmx500M -cp "/usr/local/lib/antlr-4.5-complete.jar:$CLASSPATH" org.antlr.v4.Tool
+antlr4=java -Xmx500M -cp "/usr/local/lib/antlr-4.5-complete.jar" org.antlr.v4.Tool
 antlr4py3=$(antlr4) -Dlanguage=Python3
 
 check: all
@@ -18,7 +18,7 @@ all: prep
 	@echo "."
 
 prep:
-	@echo "Gernerate Meta Data"
+	@echo "Gernerate Cooked.g4"
 	@echo -n "."
 	@rm -f $(PREP_SRC)
 	@echo -n "."
@@ -26,4 +26,6 @@ prep:
 	@echo -n "."
 	@python3 parse_cli.py
 	@echo "."
+	@echo "Handle Cooked.g4"
+	@$(antlr4py3) -visitor Cooked.g4
 

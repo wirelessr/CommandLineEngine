@@ -12,9 +12,7 @@ class Sym:
 		self.name = id
 		self.define = "SYM_%s"%id.upper()
 		self.helper = id
-	
-	def match(self, token):
-		return token == self.name
+		self.g4 = "'%s'"%id
 	
 	def __eq__(self, other):
 		if type(other) is str:
@@ -26,11 +24,15 @@ class Meta(Sym):
 		self.define = "META_%s"%id.upper()
 		self.name = id
 		self.meta = syntax
+		self.g4 = "meta_%s"%id
 	
-	def match(self, token):
-		if re.match(self.meta, token) is None:
-			return False
-		return True
+	def rule(self):
+		context = ("TEXT {\n\
+meta_syntax = \"" + self.meta + "\"\n\
+if regExp.match(meta_syntax, $TEXT.text) is None:\n\
+	raise RecognitionException($TEXT.text + \" does not match \" + meta_syntax)\n\
+}" )
+		return context
 
 class Range(Sym):
 	def __init__(self, id, min, max):
@@ -38,51 +40,25 @@ class Range(Sym):
 		self.name = id
 		self.min = int(min)
 		self.max = int(max)
-	
-	def match(self, token):
-		try:
-			num = int(token)
-		except ValueError:
-			return False
-			
-		if self.min <= num <= self.max:
-			return True
-		return False
-	
-class Entry:
-	def __init__(self, isArg=False):
-		self.sym_dict = {}
-		self.isArg = isArg
-		self.func = ""
+		self.g4 = self.define.lower()
+		
+	def rule(self):
+		context = ("INT {\n\
+if not %d <= $INT.int <= %d:\n\
+	raise RecognitionException($INT.text + \" is not between %d and %d\")\n\
+}"%(self.min, self.max, self.min, self.max) )
+		return context
 
-global_entry = Entry()
 func_list = []
 sym_list = []
 helper_dict = {}
 
-def listEntryTree(entry, prefix=""):
-	global sym_list
-	for sym_id in entry.sym_dict:
-		print(prefix, sym_list[sym_id].name)
-		listEntryTree(entry.sym_dict[sym_id], prefix+"  ")
-
 class DefPhase(ZyshVisitor):
-	def __init__(self, global_entry, sym_list, func_list):
-		self.tree_property = {}
-		self.global_entry = global_entry
+	def __init__(self, sym_list, func_list):
 		self.sym_list = sym_list
 		self.func_list = func_list
-		self.func = ""
-		self.memory2 = []
-		self.memory3 = []
-		self.hasArg2 = False
-		self.hasArg3 = False
-
-	def getValue(self, node):
-		return self.tree_property[node]
-
-	def setValue(self, node, value):
-		self.tree_property[node] = value
+		self.temp = None
+		self.rule_map = {}
 
 	def visitHelper(self, ctx):
 		helper = ctx.getText()
@@ -90,12 +66,13 @@ class DefPhase(ZyshVisitor):
 
 	def visitVarDecl(self, ctx):
 		name = ctx.meta().getText()
-		self.setValue(ctx, name)
+		self.temp = name
 		item = self.visit(ctx.syntax())
 		item.helper = self.visit(ctx.helper())
 
 		if item not in self.sym_list:
 			self.sym_list.append(item)
+			self.rule_map[item.g4] = item.rule()
 		else:
 			print("WARNING:", name, "is redefined")
 	
@@ -106,12 +83,12 @@ class DefPhase(ZyshVisitor):
 	def visitRangeSyntax(self, ctx):
 		ranges = ctx.RANGES().getText()
 		min_num, max_num = ranges[2:-2].split("..") # trim the ("<) and (">)
-		name = self.getValue(ctx.parentCtx)
+		name = self.temp
 		return Range(name, min_num, max_num)
 
 	def visitMetaSyntax(self, ctx):
 		syntax = ctx.getText()
-		name = self.getValue(ctx.parentCtx)
+		name = self.temp
 		return Meta(name, syntax[1:-1]) # trim the double-quotes(")
 
 	def visitBlock(self, ctx):
@@ -135,12 +112,13 @@ class DefPhase(ZyshVisitor):
 
 		if function not in self.func_list:
 			self.func_list.append(function)
-		self.func = function
 
-		for symbols in ctx.symbols():
-			
-			current_entry = self.global_entry
-			
+		rule_context = ""
+
+		for i in range(len(ctx.symbols())):
+			if i != 0:
+				rule_context += "\t|"
+			symbols = ctx.symbols()[i]
 			for sym in symbols.sym():
 				sym_str = sym.getText()
 
@@ -149,47 +127,30 @@ class DefPhase(ZyshVisitor):
 				
 				sym_id = self.sym_list.index(sym_str)
 
-				if sym_id not in current_entry.sym_dict:
-					entry = Entry()
-					current_entry.sym_dict[sym_id] = entry
-					current_entry = entry
-				else:
-					current_entry = current_entry.sym_dict[sym_id]
+				rule_context += (" " + self.sym_list[sym_id].g4)
 			
 			if symbols.arg() is not None:
-				self.setValue(symbols, current_entry)
-				self.visit(symbols.arg())
-			else:
-				current_entry.func = function
+				rule_context += (" " + self.visit(symbols.arg()) + "\n")
 
-	def goBackwardArg(self, ctx, sym_str):
-		parent_entry = self.getValue(ctx.parentCtx)
-		sym_id = self.sym_list.index(sym_str)
-
-		if sym_id not in parent_entry.sym_dict:
-			entry = Entry(True)
-			parent_entry.sym_dict[sym_id] = entry
-			current_entry = entry
+		func_rule = "func_" + function
+		if func_rule not in self.rule_map:
+			self.rule_map[func_rule] = rule_context
 		else:
-			current_entry = parent_entry.sym_dict[sym_id]
-		
-		if ctx.arg() is None:
-			if not self.hasArg2:
-				current_entry.func = self.func
-			self.memory2.append(current_entry)
-			self.memory3.append(current_entry)
-			return 
-
-		self.setValue(ctx, current_entry)
-
-		self.visit(ctx.arg())
+			self.rule_map[func_rule] += ("\t| " + rule_context)
 
 	def visitSymbolArg(self, ctx):
 		sym_str = ctx.SYMBOL().getText()
 		if sym_str not in self.sym_list:
 			self.sym_list.append(Sym(sym_str))
 		
-		self.goBackwardArg(ctx, sym_str)
+		sym_id = self.sym_list.index(sym_str)
+
+		full_rule = self.sym_list[sym_id].g4 
+
+		if ctx.arg() is not None:
+			full_rule += (" " + self.visit(ctx.arg()))
+		
+		return full_rule
 
 	def visitRangeArg(self, ctx):
 		ranges = ctx.RANGE_SYMBOL().getText()
@@ -200,60 +161,71 @@ class DefPhase(ZyshVisitor):
 		if new_item not in self.sym_list:
 			self.sym_list.append(new_item)
 		
-		self.goBackwardArg(ctx, ranges)
+		sym_id = self.sym_list.index(new_item)
+
+		full_rule = self.sym_list[sym_id].g4
+
+		if ctx.arg() is not None:
+			full_rule += (" " + self.visit(ctx.arg()))
+
+		return full_rule
 
 	def visitOptionArg(self, ctx):
-		parent_entry = self.getValue(ctx.parentCtx)
-		
-		self.memory2.append(parent_entry)
-		self.memory3.append(parent_entry)
-
-		if ctx.arg3() is None:
-			parent_entry.func = self.func
-		else:
-			self.hasArg3 = True
-			self.memory3 = [parent_entry]
-
-		self.setValue(ctx, parent_entry)
+		arg_rule = []
 		for arg in ctx.arg():
-			self.visit(arg)
+			arg_rule.append(self.visit(arg))
 
-		if ctx.arg3() is not None:
-			cache_memory = self.memory3[:]
-			for entry in cache_memory:
-				self.setValue(ctx, entry)
-				self.hasArg3 = False
-				self.visit(ctx.arg3())
+		full_rule = "("
+		for i in range(len(arg_rule)):
+			if i != 0:
+				full_rule += " | "
+			full_rule += (arg_rule[i])
+		full_rule += ")?"
+
+		if ctx.arg2() is not None:
+			full_rule += (" " + self.visit(ctx.arg2()))
+
+		return full_rule
 
 	def visitAlternArg(self, ctx):
-		parent_entry = self.getValue(ctx.parentCtx)
-	
-		self.memory2 = []
-		if ctx.arg2() is not None:
-			self.hasArg2 = True
-
-		self.setValue(ctx, parent_entry)
+		arg_rule = []
 		for arg in ctx.arg():
-			self.visit(arg)
+			arg_rule.append(self.visit(arg))
+
+		full_rule = "("
+		for i in range(len(arg_rule)):
+			if i != 0:
+				full_rule += " | "
+			full_rule += (arg_rule[i])
+		full_rule += ")"
 
 		if ctx.arg2() is not None:
-			cache_memory = self.memory2[:]
-			for entry in cache_memory:
-				self.setValue(ctx, entry)
-				self.hasArg2 = False
-				self.visit(ctx.arg2())
+			full_rule += (" " + self.visit(ctx.arg2()))
+
+		return full_rule
+
 
 	def visitArg2(self, ctx):
-		parent_entry = self.getValue(ctx.parentCtx)
+		return self.visit(ctx.arg())
 
-		self.setValue(ctx, parent_entry)
-		self.visit(ctx.arg())
+	def generate_g4(self):
+		file_context = "grammar Cooked;\n\
+@header {\n\
+import re as regExp\n\
+}\n\
+top: ("
+		for i in range(len(self.func_list)):
+			if i != 0:
+				file_context += " | "
+			file_context += ("func_" + self.func_list[i])
+		file_context += ")+ ;\n"
+			
+		for rule in self.rule_map:
+			file_context += (rule + " : " + self.rule_map[rule] + ";\n")
 		
-	def visitArg3(self, ctx):
-		parent_entry = self.getValue(ctx.parentCtx)
-
-		self.setValue(ctx, parent_entry)
-		self.visit(ctx.arg())
+		print(file_context)
+		f = open('Cooked.g4', 'w')
+		f.write(file_context)
 
 	def visitFinish(self):
 		f = open('cmd_func.c', 'w')
@@ -270,43 +242,8 @@ class DefPhase(ZyshVisitor):
 		for sym in self.sym_list:
 			f.write("#define %s %d\n"%(sym.define, i))
 			i = i + 1
-
-
-def cli_exec(zysh_cli):
-	global global_entry
-	global func_list
-	global sym_list
-	arg_list = []
-
-	print('*** CLI ***')
-	zysh_cli = zysh_cli.decode("utf8")
-	print(zysh_cli)
-	
-	current_entry = global_entry
-	for s in zysh_cli.split():
-		if s == '?':
-			arg_list = [-1]
-			for sym_id in current_entry.sym_dict:
-				arg_list.append(sym_list[sym_id].helper.encode())
-			listEntryTree(global_entry)
-			return arg_list
-
-		for sym_id in current_entry.sym_dict:
-			if sym_list[sym_id].match(s):
-				current_entry = current_entry.sym_dict[sym_id]
-				break
-		else:
-			current_entry = None
-
-		if current_entry.isArg:
-			arg_list.append(s.encode())
-			
-	
-	arg_list.insert(0, func_list.index(current_entry.func))
-	print("uses ", current_entry.func, "(", arg_list, ")")
-	return arg_list
-
-
+		
+		self.generate_g4()
 
 input_stream = FileStream("test.cli")
 
@@ -319,7 +256,7 @@ tree = parser.top()
 # print(lisp_tree_str)
 
 # definition phase, collect data
-visitor = DefPhase(global_entry, sym_list, func_list)
+visitor = DefPhase(sym_list, func_list)
 result = visitor.visit(tree)
 
 visitor.visitFinish()
