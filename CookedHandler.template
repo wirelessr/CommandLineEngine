@@ -1,0 +1,49 @@
+#!/usr/bin/python3
+import sys
+from antlr4 import *
+from antlr4.InputStream import InputStream
+from antlr4.error.ErrorListener import ErrorListener
+
+from CookedLexer import CookedLexer
+from CookedParser import CookedParser
+from CookedVisitor import CookedVisitor
+from VisitTemplate import VisitTemplate
+class FoundException(Exception): pass
+class ExceptionListener(ErrorListener):
+	def syntaxError(self, recognizer, offendingSymbol, line, column, msg, e):
+		print("line " + str(line) + ":" + str(column) + " " + msg, file=sys.stderr)
+		raise FoundException()
+
+
+class CookedHandler(CookedVisitor, VisitTemplate):
+	def __init__(self, ruleNames):
+		VisitTemplate.__init__(self, ruleNames)
+	
+	[VisitFunctions]
+
+def cli_exec(zysh_cli):
+	zysh_cli = zysh_cli.decode("utf8")
+	input_stream = InputStream(zysh_cli)
+	
+	lexer = CookedLexer(input_stream)
+	token_stream = CommonTokenStream(lexer)
+	parser = CookedParser(token_stream)
+	parser.removeErrorListeners()
+	parser.addErrorListener(ExceptionListener())
+	
+	try:
+		tree = parser.top()
+	except FoundException:
+		print("FoundException")
+	else:
+		# lisp_tree_str = tree.toStringTree(recog=parser)
+		# print(lisp_tree_str)
+		
+		# definition phase, collect data
+		visitor = CookedHandler(parser.ruleNames)
+		result = visitor.visit(tree)
+		print("result :", result)
+		return result
+
+if __name__ == '__main__':
+	cli_exec(zysh_cli=sys.argv[1].encode())

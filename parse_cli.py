@@ -245,61 +245,22 @@ WS  :   [ \\t\\n\\r]+ -> skip ;\n"
 		f.write(file_context)
 
 	def generate_py(self):
-		file_context = "#!/usr/bin/python3\n\
-import sys\n\
-from antlr4 import *\n\
-from antlr4.InputStream import InputStream\n\
-from antlr4.error.ErrorListener import ErrorListener\n\
-\n\
-from CookedLexer import CookedLexer\n\
-from CookedParser import CookedParser\n\
-from CookedVisitor import CookedVisitor\n\
-from VisitTemplate import VisitTemplate\n\
-class FoundException(Exception): pass\n\
-class ExceptionListener(ErrorListener):\n\
-	def syntaxError(self, recognizer, offendingSymbol, line, column, msg, e):\n\
-		print(\"line \" + str(line) + \":\" + str(column) + \" \" + msg, file=sys.stderr)\n\
-		raise FoundException()\n\
-\n\
-\n\
-class CookedHandler(CookedVisitor, VisitTemplate):\n\
-	def __init__(self, ruleNames):\n\
-		VisitTemplate.__init__(self, ruleNames)\n\
-\n\
-"
+		f = open('CookedHandler.template', 'r')
+		file_template = f.read().split("[VisitFunctions]")
+
+		file_context = file_template[0]
+
+		file_context += "\n\
+		self.func_list = [\"" + "\", \"".join(self.func_list) + "\"]\n"
+			
 		for func in self.func_list:
 			file_context += "\n\
 	def visit%s(self, ctx):\n\
-		self.visitTemplate(ctx)\n\
+		return self.visitTemplate(ctx, self.func_list)\n\
 \n\
 "%("Func_" + func)
 		
-		file_context += "\n\
-def cli_exec(zysh_cli):\n\
-	input_stream = InputStream(zysh_cli)\n\
-	\n\
-	lexer = CookedLexer(input_stream)\n\
-	token_stream = CommonTokenStream(lexer)\n\
-	parser = CookedParser(token_stream)\n\
-	parser.removeErrorListeners()\n\
-	parser.addErrorListener(ExceptionListener())\n\
-	\n\
-	try:\n\
-		tree = parser.top()\n\
-	except FoundException:\n\
-		print(\"FoundException\")\n\
-	else:\n\
-		# lisp_tree_str = tree.toStringTree(recog=parser)\n\
-		# print(lisp_tree_str)\n\
-		\n\
-		# definition phase, collect data\n\
-		visitor = CookedHandler(parser.ruleNames)\n\
-		result = visitor.visit(tree)\n\
-		# print(\"result :\", result)\n\
-\n\
-if __name__ == '__main__':\n\
-	cli_exec(zysh_cli=sys.argv[1])\n\
-"
+		file_context += file_template[-1]
 		
 		
 		# print(file_context)
