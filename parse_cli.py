@@ -120,12 +120,11 @@ class DefPhase(ZyshVisitor):
 		if function not in self.func_list:
 			self.func_list.append(function)
 
-		rule_context = ""
+		func_rule = "func_" + function
 
-		for i in range(len(ctx.symbols())):
-			if i != 0:
-				rule_context += "\t|"
-			symbols = ctx.symbols()[i]
+		for symbols in ctx.symbols():
+			rule_context = ""
+
 			for sym in symbols.sym():
 				sym_str = sym.getText()
 
@@ -137,13 +136,17 @@ class DefPhase(ZyshVisitor):
 				rule_context += (" " + self.sym_list[sym_id].g4)
 			
 			if symbols.arg() is not None:
-				rule_context += (" " + self.visit(symbols.arg()) + "\n")
+				arg_context = self.visit(symbols.arg())
 
-		func_rule = "func_" + function
-		if func_rule not in self.rule_map:
-			self.rule_map[func_rule] = rule_context
-		else:
-			self.rule_map[func_rule] += ("\t| " + rule_context)
+				index = self.rule_map.get(func_rule, "").count(func_rule + "_arg_")
+				arg_rule = func_rule + "_arg_%d"%index
+				self.rule_map[arg_rule] = arg_context
+				rule_context += (" " + arg_rule + "\n")
+
+			if func_rule not in self.rule_map:
+				self.rule_map[func_rule] = rule_context
+			else:
+				self.rule_map[func_rule] += ("\t| " + rule_context)
 
 	def visitSymbolArg(self, ctx):
 		sym_str = ctx.SYMBOL().getText()
@@ -237,8 +240,70 @@ top: ("
 INT :   '0' | '1'..'9' '0'..'9'* ;\n\
 WS  :   [ \\t\\n\\r]+ -> skip ;\n"
 
-		print(file_context)
+		#print(file_context)
 		f = open('Cooked.g4', 'w')
+		f.write(file_context)
+
+	def generate_py(self):
+		file_context = "#!/usr/bin/python3\n\
+import sys\n\
+from antlr4 import *\n\
+from antlr4.InputStream import InputStream\n\
+from antlr4.error.ErrorListener import ErrorListener\n\
+\n\
+from CookedLexer import CookedLexer\n\
+from CookedParser import CookedParser\n\
+from CookedVisitor import CookedVisitor\n\
+from VisitTemplate import VisitTemplate\n\
+class FoundException(Exception): pass\n\
+class ExceptionListener(ErrorListener):\n\
+	def syntaxError(self, recognizer, offendingSymbol, line, column, msg, e):\n\
+		print(\"line \" + str(line) + \":\" + str(column) + \" \" + msg, file=sys.stderr)\n\
+		raise FoundException()\n\
+\n\
+\n\
+class CookedHandler(CookedVisitor, VisitTemplate):\n\
+	def __init__(self, ruleNames):\n\
+		VisitTemplate.__init__(self, ruleNames)\n\
+\n\
+"
+		for func in self.func_list:
+			file_context += "\n\
+	def visit%s(self, ctx):\n\
+		self.visitTemplate(ctx)\n\
+\n\
+"%("Func_" + func)
+		
+		file_context += "\n\
+def cli_exec(zysh_cli):\n\
+	input_stream = InputStream(zysh_cli)\n\
+	\n\
+	lexer = CookedLexer(input_stream)\n\
+	token_stream = CommonTokenStream(lexer)\n\
+	parser = CookedParser(token_stream)\n\
+	parser.removeErrorListeners()\n\
+	parser.addErrorListener(ExceptionListener())\n\
+	\n\
+	try:\n\
+		tree = parser.top()\n\
+	except FoundException:\n\
+		print(\"FoundException\")\n\
+	else:\n\
+		# lisp_tree_str = tree.toStringTree(recog=parser)\n\
+		# print(lisp_tree_str)\n\
+		\n\
+		# definition phase, collect data\n\
+		visitor = CookedHandler(parser.ruleNames)\n\
+		result = visitor.visit(tree)\n\
+		# print(\"result :\", result)\n\
+\n\
+if __name__ == '__main__':\n\
+	cli_exec(zysh_cli=sys.argv[1])\n\
+"
+		
+		
+		# print(file_context)
+		f = open('CookedHandler.py', 'w')
 		f.write(file_context)
 
 	def visitFinish(self):
@@ -258,6 +323,7 @@ WS  :   [ \\t\\n\\r]+ -> skip ;\n"
 			i = i + 1
 		
 		self.generate_g4()
+		self.generate_py()
 
 input_stream = FileStream("test.cli")
 
