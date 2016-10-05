@@ -43,9 +43,9 @@ class Range(Sym):
 		self.g4 = self.define.lower()
 		
 	def rule(self):
-		context = ("INT {\n\
-if not %d <= $INT.int <= %d:\n\
-	raise RecognitionException($INT.text + \" is not between %d and %d\")\n\
+		context = ("TEXT {\n\
+if not %d <= $TEXT.int <= %d:\n\
+	raise RecognitionException($TEXT.text + \" is not between %d and %d\")\n\
 }"%(self.min, self.max, self.min, self.max) )
 		return context
 	
@@ -187,12 +187,10 @@ class DefPhase(ZyshVisitor):
 		arg_rule = []
 		for arg in ctx.arg():
 			arg_rule.append(self.visit(arg))
+		arg_rule.sort()
 
 		full_rule = "("
-		for i in range(len(arg_rule)):
-			if i != 0:
-				full_rule += " | "
-			full_rule += (arg_rule[i])
+		full_rule += " | ".join(arg_rule)
 		full_rule += ")?"
 
 		if ctx.arg2() is not None:
@@ -204,12 +202,10 @@ class DefPhase(ZyshVisitor):
 		arg_rule = []
 		for arg in ctx.arg():
 			arg_rule.append(self.visit(arg))
+		arg_rule.sort()
 
 		full_rule = "("
-		for i in range(len(arg_rule)):
-			if i != 0:
-				full_rule += " | "
-			full_rule += (arg_rule[i])
+		full_rule += " | ".join(arg_rule)
 		full_rule += ")"
 
 		if ctx.arg2() is not None:
