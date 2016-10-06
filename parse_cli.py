@@ -24,11 +24,10 @@ class Meta(Sym):
 		self.define = "META_%s"%id.upper()
 		self.name = id
 		self.meta = syntax
-		self.g4 = "meta_"
+		self.g4 = self.define+"=meta_"
 	
 	def rule(self):
-		context = "TEXT"
-		return context
+		return self.meta
 
 class Range(Sym):
 	def __init__(self, id, min, max):
@@ -36,11 +35,10 @@ class Range(Sym):
 		self.name = id
 		self.min = int(min)
 		self.max = int(max)
-		self.g4 = "range_"
+		self.g4 = self.define+"=range_"
 		
 	def rule(self):
-		context = "INT"
-		return context
+		return self.define
 	
 	def __eq__(self, other):
 		if type(other) is str:
@@ -57,6 +55,7 @@ class DefPhase(ZyshVisitor):
 		self.func_list = func_list
 		self.temp = None
 		self.rule_map = {}
+		self.meta_map = {}
 
 	def visitHelper(self, ctx):
 		helper = ctx.getText()
@@ -73,8 +72,8 @@ class DefPhase(ZyshVisitor):
 		else:
 			print("WARNING:", name, "is redefined")
 			
-		if item.g4 not in self.rule_map:
-			self.rule_map[item.g4] = item.rule()
+		if item.define not in self.meta_map:
+			self.meta_map[item.define] = item.rule()
 	
 	def visitHelpDecl(self, ctx):
 		global helper_dict
@@ -164,8 +163,8 @@ class DefPhase(ZyshVisitor):
 		if new_item not in self.sym_list:
 			self.sym_list.append(new_item)
 
-		if new_item.g4 not in self.rule_map:
-			self.rule_map[new_item.g4] = new_item.rule()
+		if new_item.define not in self.meta_map:
+			self.meta_map[new_item.define] = new_item.rule()
 		
 		sym_id = self.sym_list.index(new_item)
 
@@ -226,6 +225,8 @@ top: ("
 			file_context += (rule + " : " + self.rule_map[rule] + ";\n")
 		
 		file_context += "\n\
+range_ : INT ;\n\
+meta_ : TEXT ;\n\
 INT :   '0' | '1'..'9' '0'..'9'* ;\n\
 TEXT : ~[ \\n\\r]+ ;\n\
 WS  :   [ \\t\\n\\r]+ -> skip ;\n"
@@ -242,6 +243,10 @@ WS  :   [ \\t\\n\\r]+ -> skip ;\n"
 
 		file_context += "\n\
 		self.func_list = [\"" + "\", \"".join(self.func_list) + "\"]\n"
+		
+		for meta in self.meta_map:
+			file_context += "\n\
+		self.meta_map[\"%s\"] = \"%s\"\n"%(meta, self.meta_map[meta])
 			
 		for func in self.func_list:
 			file_context += "\n\
