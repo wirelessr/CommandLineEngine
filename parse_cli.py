@@ -24,14 +24,10 @@ class Meta(Sym):
 		self.define = "META_%s"%id.upper()
 		self.name = id
 		self.meta = syntax
-		self.g4 = "meta_%s"%id
+		self.g4 = "meta_"
 	
 	def rule(self):
-		context = ("TEXT {\n\
-meta_syntax = \"" + self.meta + "\"\n\
-if regExp.match(meta_syntax, $TEXT.text) is None:\n\
-	raise RecognitionException($TEXT.text + \" does not match \" + meta_syntax)\n\
-}" )
+		context = "TEXT"
 		return context
 
 class Range(Sym):
@@ -40,13 +36,10 @@ class Range(Sym):
 		self.name = id
 		self.min = int(min)
 		self.max = int(max)
-		self.g4 = self.define.lower()
+		self.g4 = "range_"
 		
 	def rule(self):
-		context = ("TEXT {\n\
-if not %d <= $TEXT.int <= %d:\n\
-	raise RecognitionException($TEXT.text + \" is not between %d and %d\")\n\
-}"%(self.min, self.max, self.min, self.max) )
+		context = "INT"
 		return context
 	
 	def __eq__(self, other):
@@ -232,8 +225,9 @@ top: ("
 		for rule in self.rule_map:
 			file_context += (rule + " : " + self.rule_map[rule] + ";\n")
 		
-		file_context += "TEXT : ~[ \\n\\r]+ ;\n\
+		file_context += "\n\
 INT :   '0' | '1'..'9' '0'..'9'* ;\n\
+TEXT : ~[ \\n\\r]+ ;\n\
 WS  :   [ \\t\\n\\r]+ -> skip ;\n"
 
 		#print(file_context)
