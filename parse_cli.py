@@ -13,6 +13,7 @@ class Sym:
 		self.define = "SYM_%s"%id.upper()
 		self.helper = id
 		self.g4 = "'%s'"%id
+		self.type = "Sym"
 	
 	def __eq__(self, other):
 		if type(other) is str:
@@ -25,6 +26,7 @@ class Meta(Sym):
 		self.name = id
 		self.meta = syntax
 		self.g4 = self.define+"=meta_"
+		self.type = "Meta"
 	
 	def rule(self):
 		return self.meta
@@ -36,6 +38,7 @@ class Range(Sym):
 		self.min = int(min)
 		self.max = int(max)
 		self.g4 = self.define+"=range_"
+		self.type = "Range"
 		
 	def rule(self):
 		return self.define
@@ -56,6 +59,7 @@ class DefPhase(ZyshVisitor):
 		self.temp = None
 		self.rule_map = {}
 		self.meta_map = {}
+		self.arg_map = {}
 
 	def visitHelper(self, ctx):
 		helper = ctx.getText()
@@ -128,12 +132,16 @@ class DefPhase(ZyshVisitor):
 				rule_context += (" " + self.sym_list[sym_id].g4)
 			
 			if symbols.arg() is not None:
-				arg_context = self.visit(symbols.arg())
-
 				index = self.rule_map.get(func_rule, "").count(func_rule + "_arg_")
 				arg_rule = func_rule + "_arg_%d"%index
+
+				self.temp = arg_rule
+				self.arg_map[arg_rule] = []
+
+				arg_context = self.visit(symbols.arg())
+
 				self.rule_map[arg_rule] = arg_context
-				rule_context += (" " + arg_rule + "\n")
+				rule_context += (" " + "ARG="+arg_rule + "\n")
 
 			if func_rule not in self.rule_map:
 				self.rule_map[func_rule] = rule_context
@@ -146,6 +154,9 @@ class DefPhase(ZyshVisitor):
 			self.sym_list.append(Sym(sym_str))
 		
 		sym_id = self.sym_list.index(sym_str)
+
+		if not self.sym_list[sym_id].define.startswith("SYM_"):
+			self.arg_map[self.temp].append(self.sym_list[sym_id])
 
 		full_rule = self.sym_list[sym_id].g4 
 
@@ -167,6 +178,9 @@ class DefPhase(ZyshVisitor):
 			self.meta_map[new_item.define] = new_item.rule()
 		
 		sym_id = self.sym_list.index(new_item)
+
+		if self.sym_list[sym_id] not in self.arg_map[self.temp]:
+			self.arg_map[self.temp].append(self.sym_list[sym_id])
 
 		full_rule = self.sym_list[sym_id].g4
 
@@ -242,7 +256,8 @@ WS  :   [ \\t\\n\\r]+ -> skip ;\n"
 		file_context = file_template[0]
 
 		file_context += "\n\
-		self.func_list = [\"" + "\", \"".join(self.func_list) + "\"]\n"
+		self.func_list = [\"" + "\", \"".join(self.func_list) + "\"]\n\
+		self.meta_map = {}\n"
 		
 		for meta in self.meta_map:
 			file_context += "\n\
@@ -251,10 +266,23 @@ WS  :   [ \\t\\n\\r]+ -> skip ;\n"
 		for func in self.func_list:
 			file_context += "\n\
 	def visit%s(self, ctx):\n\
+		if not self.visit(ctx.ARG):\n\
+			return [-1]\n\
 		return self.visitTemplate(ctx, self.func_list)\n\
 \n\
 "%("Func_" + func)
 		
+		for arg in self.arg_map:
+			file_context += "\n\
+	def visit%s(self, ctx):\n\
+"%(arg.capitalize())
+			for meta in self.arg_map[arg]:
+				file_context += "\n\
+		if ctx.{0} is not None and not self.match_{1}(self.meta_map[\"{0}\"], ctx.{0}.getText()):\n\
+			return False\n".format(meta.define, meta.type)
+			file_context += "\n\
+		return True\n"
+
 		file_context += file_template[-1]
 		
 		

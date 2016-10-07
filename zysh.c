@@ -63,6 +63,7 @@ main(int argc, char *argv[])
 					}
 					else
 					{
+						return 1;
 						for(i = 1; i < total; i++)
 						{
 							fprintf(stderr, "%s ", cmd_argv[i]);

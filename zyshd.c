@@ -16,6 +16,11 @@ int show_interface(int argc, char **argv)
 	FUNC_INSTANCE;
 }
 
+int show_tunnel(int argc, char **argv)
+{
+	FUNC_INSTANCE;
+}
+
 int show_ap_vlan(int argc, char **argv)
 {
 	FUNC_INSTANCE;

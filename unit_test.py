@@ -94,6 +94,8 @@ ASSERT_EQUAL("show interface wlan0", "show_interface zysh wlan0")
 ASSERT_FALSE("show interface eth10")
 ASSERT_FALSE("show interface wlan10")
 ASSERT_EQUAL("show interface wlan2", "show_interface zysh wlan2")
+ASSERT_EQUAL("show interface gre0", "show_tunnel zysh gre0")
+ASSERT_FALSE("show interface gre2")
 
 ASSERT_EQUAL("config hybrid-mode standalone", "config_ap_mode zysh standalone")
 ASSERT_EQUAL("config hybrid-mode manage", "config_ap_mode zysh manage")

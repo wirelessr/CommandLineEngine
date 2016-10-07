@@ -4,6 +4,7 @@
 %help ETH "For now, only support eth0..eth2";
 %define ETH "(eth0|eth1|eth2)$" "<ethX>";
 %define PROFILE_NAME "[a-zA-z]{1,10}" "letters";
+%define TUNNEL "(gre0|gre1)" "GRE interfaces";
 
 %command
 config hybrid-mode % {standalone|manage|controller} = {
@@ -61,6 +62,13 @@ show interface % [IF|ETH|RADIO_SLOT] = {
 	%privilege 100;
 	%visibility 100;
 	%function show_interface;
+}
+
+%command
+show interface % TUNNEL = {
+	%privilege 100;
+	%visibility 100;
+	%function show_tunnel;
 }
 
 %command
