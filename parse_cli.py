@@ -7,6 +7,12 @@ from ZyshLexer import ZyshLexer
 from ZyshParser import ZyshParser
 from ZyshVisitor import ZyshVisitor
 
+class TagStr(str):
+	def __new__(cls, value, meta):
+		obj = str.__new__(cls, value)
+		obj.meta = meta
+		return obj
+
 class Sym:
 	def __init__(self, id):
 		self.name = id
@@ -14,6 +20,7 @@ class Sym:
 		self.helper = id
 		self.g4 = "'%s'"%id
 		self.type = "Sym"
+		self.tag = []
 	
 	def __eq__(self, other):
 		if type(other) is str:
@@ -25,8 +32,9 @@ class Meta(Sym):
 		self.define = "META_%s"%id.upper()
 		self.name = id
 		self.meta = syntax
-		self.g4 = self.define+"=meta_"
+		self.g4 = "meta_"
 		self.type = "Meta"
+		self.tag = [self.define]
 	
 	def rule(self):
 		return self.meta
@@ -37,8 +45,9 @@ class Range(Sym):
 		self.name = id
 		self.min = int(min)
 		self.max = int(max)
-		self.g4 = self.define+"=range_"
+		self.g4 = "range_"
 		self.type = "Range"
+		self.tag = [self.define]
 		
 	def rule(self):
 		return self.define
@@ -116,10 +125,8 @@ class DefPhase(ZyshVisitor):
 		if function not in self.func_list:
 			self.func_list.append(function)
 
-		func_rule = "func_" + function
-
 		for symbols in ctx.symbols():
-			rule_context = ""
+			prefix = ""
 
 			for sym in symbols.sym():
 				sym_str = sym.getText()
@@ -129,24 +136,16 @@ class DefPhase(ZyshVisitor):
 				
 				sym_id = self.sym_list.index(sym_str)
 
-				rule_context += (" " + self.sym_list[sym_id].g4)
+				prefix += (" " + self.sym_list[sym_id].g4)
 			
+			if self.rule_map.get(prefix) is None:
+				self.rule_map[prefix] = []
+
 			if symbols.arg() is not None:
-				index = self.rule_map.get(func_rule, "").count(func_rule + "_arg_")
-				arg_rule = func_rule + "_arg_%d"%index
-
-				self.temp = arg_rule
-				self.arg_map[arg_rule] = []
-
 				arg_context = self.visit(symbols.arg())
+				self.rule_map[prefix].append(arg_context)
 
-				self.rule_map[arg_rule] = arg_context
-				rule_context += (" " + "ARG="+arg_rule + "\n")
 
-			if func_rule not in self.rule_map:
-				self.rule_map[func_rule] = rule_context
-			else:
-				self.rule_map[func_rule] += ("\t| " + rule_context)
 
 	def visitSymbolArg(self, ctx):
 		sym_str = ctx.SYMBOL().getText()
@@ -155,13 +154,10 @@ class DefPhase(ZyshVisitor):
 		
 		sym_id = self.sym_list.index(sym_str)
 
-		if not self.sym_list[sym_id].define.startswith("SYM_"):
-			self.arg_map[self.temp].append(self.sym_list[sym_id])
-
-		full_rule = self.sym_list[sym_id].g4 
+		full_rule = [TagStr(self.sym_list[sym_id].g4, self.sym_list[sym_id].tag)]
 
 		if ctx.arg() is not None:
-			full_rule += (" " + self.visit(ctx.arg()))
+			full_rule += self.visit(ctx.arg())
 		
 		return full_rule
 
@@ -179,28 +175,37 @@ class DefPhase(ZyshVisitor):
 		
 		sym_id = self.sym_list.index(new_item)
 
-		if self.sym_list[sym_id] not in self.arg_map[self.temp]:
-			self.arg_map[self.temp].append(self.sym_list[sym_id])
-
-		full_rule = self.sym_list[sym_id].g4
+		full_rule = [TagStr(self.sym_list[sym_id].g4, self.sym_list[sym_id].tag)]
 
 		if ctx.arg() is not None:
-			full_rule += (" " + self.visit(ctx.arg()))
+			full_rule += self.visit(ctx.arg())
 
 		return full_rule
 
 	def visitMultiArg(self, ctx, option=""):
-		arg_rule = []
+		arg_rules = []
 		for arg in ctx.arg():
-			arg_rule.append(self.visit(arg))
-		arg_rule.sort()
+			arg_rule = self.visit(arg)
+			
+			if arg_rule in arg_rules:
+				exist_idx = arg_rules.index(arg_rule)
 
-		full_rule = "("
-		full_rule += " | ".join(arg_rule)
-		full_rule += (")"+option)
+				for i in range(len(arg_rule)):
+					arg_rules[exist_idx][i].meta += arg_rule[i].meta
+			else:
+				arg_rules.append(arg_rule)
+
+		arg_rules.sort()
+
+		full_rule = ["("]
+		for arg_rule in arg_rules:
+			if len(full_rule) > 1:
+				full_rule += ["|"]
+			full_rule += arg_rule
+		full_rule += [")"+option]
 
 		if ctx.arg2() is not None:
-			full_rule += (" " + self.visit(ctx.arg2()))
+			full_rule += self.visit(ctx.arg2())
 
 		return full_rule
 		
@@ -214,6 +219,24 @@ class DefPhase(ZyshVisitor):
 
 	def visitArg2(self, ctx):
 		return self.visit(ctx.arg())
+
+
+
+
+
+	def listRule(self):
+		for prefix in self.rule_map:
+			print(prefix, ":\n")
+			
+			for rule in self.rule_map[prefix]:
+				s = ""
+				for token in rule:
+					if token == "meta_" or token == "range_":
+						s += ((("&".join(token.meta))+"="+token) + " ")
+					else:
+						s += (token + " ")
+				print("\t{}\n".format(s))
+
 
 	def generate_g4(self):
 		file_context = "grammar Cooked;\n\
@@ -315,7 +338,8 @@ tree = parser.top()
 visitor = DefPhase(sym_list, func_list)
 result = visitor.visit(tree)
 
-visitor.visitFinish()
+# visitor.visitFinish()
+visitor.listRule()
 
 # listEntryTree(global_entry)
 
