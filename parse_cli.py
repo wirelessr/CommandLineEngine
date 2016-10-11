@@ -189,7 +189,7 @@ class DefPhase(ZyshVisitor):
 
 		return full_rule
 
-	def visitOptionArg(self, ctx):
+	def visitMultiArg(self, ctx, option=""):
 		arg_rule = []
 		for arg in ctx.arg():
 			arg_rule.append(self.visit(arg))
@@ -197,27 +197,19 @@ class DefPhase(ZyshVisitor):
 
 		full_rule = "("
 		full_rule += " | ".join(arg_rule)
-		full_rule += ")?"
+		full_rule += (")"+option)
 
 		if ctx.arg2() is not None:
 			full_rule += (" " + self.visit(ctx.arg2()))
 
 		return full_rule
+		
+
+	def visitOptionArg(self, ctx):
+		return self.visitMultiArg(ctx, "?")
 
 	def visitAlternArg(self, ctx):
-		arg_rule = []
-		for arg in ctx.arg():
-			arg_rule.append(self.visit(arg))
-		arg_rule.sort()
-
-		full_rule = "("
-		full_rule += " | ".join(arg_rule)
-		full_rule += ")"
-
-		if ctx.arg2() is not None:
-			full_rule += (" " + self.visit(ctx.arg2()))
-
-		return full_rule
+		return self.visitMultiArg(ctx)
 
 
 	def visitArg2(self, ctx):
