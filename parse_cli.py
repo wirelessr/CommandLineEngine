@@ -122,6 +122,7 @@ class DefPhase(ZyshVisitor):
 	def visitFunctionDecl(self, ctx):
 		privilege, visibility, function = self.visit(ctx.block())
 
+		self.temp = function
 		if function not in self.func_list:
 			self.func_list.append(function)
 
@@ -143,6 +144,15 @@ class DefPhase(ZyshVisitor):
 
 			if symbols.arg() is not None:
 				arg_context = self.visit(symbols.arg())
+				arg_context.append(TagStr("TERMINATED", function))
+			else:
+				arg_context = [TagStr("TERMINATED", function)]
+
+
+			if arg_context in self.rule_map[prefix]:
+				exist_idx = self.rule_map[prefix].index(arg_context)
+				self.mergeMetaList(self.rule_map[prefix][exist_idx], arg_context)
+			else:
 				self.rule_map[prefix].append(arg_context)
 
 
@@ -182,6 +192,11 @@ class DefPhase(ZyshVisitor):
 
 		return full_rule
 
+
+	def mergeMetaList(self, orig, other):
+		for i in range(len(orig)):
+			orig[i].meta += other[i].meta
+
 	def visitMultiArg(self, ctx, option=""):
 		arg_rules = []
 		for arg in ctx.arg():
@@ -190,19 +205,25 @@ class DefPhase(ZyshVisitor):
 			if arg_rule in arg_rules:
 				exist_idx = arg_rules.index(arg_rule)
 
-				for i in range(len(arg_rule)):
-					arg_rules[exist_idx][i].meta += arg_rule[i].meta
+				self.mergeMetaList(arg_rules[exist_idx], arg_rule)
 			else:
 				arg_rules.append(arg_rule)
 
-		arg_rules.sort()
 
-		full_rule = ["("]
+		if len(arg_rules) > 1:
+			full_rule = ["("]
+		else:
+			full_rule = []
+
 		for arg_rule in arg_rules:
 			if len(full_rule) > 1:
 				full_rule += ["|"]
 			full_rule += arg_rule
-		full_rule += [")"+option]
+
+		if len(arg_rules) > 1:
+			full_rule += [")"+option]
+		elif option != "":
+			full_rule += [option]
 
 		if ctx.arg2() is not None:
 			full_rule += self.visit(ctx.arg2())
@@ -225,24 +246,32 @@ class DefPhase(ZyshVisitor):
 
 
 	def listRule(self):
+		i = 0
 		for prefix in self.rule_map:
-			print(prefix, ":\n")
-			
+			print("rule{0} : {1} rule{0}_arg ; \nrule{0}_arg : ".format(i, prefix))
+			i += 1
+				
+			first = True
 			for rule in self.rule_map[prefix]:
-				s = ""
+				if first:
+					s = "  "
+				else:
+					s = "| "
+
 				for token in rule:
 					if token == "meta_" or token == "range_":
 						s += ((("&".join(token.meta))+"="+token) + " ")
+					elif token == "TERMINATED":
+						s += (token + " # " + token.meta)
 					else:
 						s += (token + " ")
-				print("\t{}\n".format(s))
+				print("\t{}".format(s))
+				first = False
+			print("\t;")
 
 
 	def generate_g4(self):
 		file_context = "grammar Cooked;\n\
-@header {\n\
-import re as regExp\n\
-}\n\
 top: ("
 		for i in range(len(self.func_list)):
 			if i != 0:
@@ -256,13 +285,14 @@ top: ("
 		file_context += "\n\
 range_ : INT ;\n\
 meta_ : TEXT ;\n\
+TERMINATED : '\n' ;\n\
 INT :   '0' | '1'..'9' '0'..'9'* ;\n\
 TEXT : ~[ \\n\\r]+ ;\n\
-WS  :   [ \\t\\n\\r]+ -> skip ;\n"
+WS  :   [ \\t\\r]+ -> skip ;\n"
 
-		#print(file_context)
-		f = open('Cooked.g4', 'w')
-		f.write(file_context)
+		# print(file_context)
+		# f = open('Cooked.g4', 'w')
+		# f.write(file_context)
 
 	def generate_py(self):
 		f = open('CookedHandler.template', 'r')
