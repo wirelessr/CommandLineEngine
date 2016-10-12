@@ -20,8 +20,10 @@ class Sym:
 		self.helper = id
 		self.g4 = "'%s'"%id
 		self.type = "Sym"
-		self.tag = []
 	
+	def tag(self, func):
+		return []
+
 	def __eq__(self, other):
 		if type(other) is str:
 			return self.name == other
@@ -34,8 +36,10 @@ class Meta(Sym):
 		self.meta = syntax
 		self.g4 = "meta_"
 		self.type = "Meta"
-		self.tag = [self.define]
 	
+	def tag(self, func):
+		return [(self.define, func)]
+
 	def rule(self):
 		return self.meta
 
@@ -47,8 +51,10 @@ class Range(Sym):
 		self.max = int(max)
 		self.g4 = "range_"
 		self.type = "Range"
-		self.tag = [self.define]
 		
+	def tag(self, func):
+		return [(self.define, func)]
+
 	def rule(self):
 		return self.define
 	
@@ -142,11 +148,12 @@ class DefPhase(ZyshVisitor):
 			if self.rule_map.get(prefix) is None:
 				self.rule_map[prefix] = []
 
+			teminated = TagStr("TERMINATED", [function])
 			if symbols.arg() is not None:
 				arg_context = self.visit(symbols.arg())
-				arg_context.append(TagStr("TERMINATED", function))
+				arg_context.append(teminated)
 			else:
-				arg_context = [TagStr("TERMINATED", function)]
+				arg_context = [teminated]
 
 
 			if arg_context in self.rule_map[prefix]:
@@ -164,7 +171,7 @@ class DefPhase(ZyshVisitor):
 		
 		sym_id = self.sym_list.index(sym_str)
 
-		full_rule = [TagStr(self.sym_list[sym_id].g4, self.sym_list[sym_id].tag)]
+		full_rule = [TagStr(self.sym_list[sym_id].g4, self.sym_list[sym_id].tag(self.temp))]
 
 		if ctx.arg() is not None:
 			full_rule += self.visit(ctx.arg())
@@ -185,7 +192,7 @@ class DefPhase(ZyshVisitor):
 		
 		sym_id = self.sym_list.index(new_item)
 
-		full_rule = [TagStr(self.sym_list[sym_id].g4, self.sym_list[sym_id].tag)]
+		full_rule = [TagStr(self.sym_list[sym_id].g4, self.sym_list[sym_id].tag(self.temp))]
 
 		if ctx.arg() is not None:
 			full_rule += self.visit(ctx.arg())
@@ -209,8 +216,8 @@ class DefPhase(ZyshVisitor):
 			else:
 				arg_rules.append(arg_rule)
 
-
-		if len(arg_rules) > 1:
+		print(arg_rules)
+		if len(arg_rules) > 1 or option != "":
 			full_rule = ["("]
 		else:
 			full_rule = []
@@ -220,10 +227,8 @@ class DefPhase(ZyshVisitor):
 				full_rule += ["|"]
 			full_rule += arg_rule
 
-		if len(arg_rules) > 1:
+		if len(arg_rules) > 1 or option != "":
 			full_rule += [")"+option]
-		elif option != "":
-			full_rule += [option]
 
 		if ctx.arg2() is not None:
 			full_rule += self.visit(ctx.arg2())
@@ -260,9 +265,12 @@ class DefPhase(ZyshVisitor):
 
 				for token in rule:
 					if token == "meta_" or token == "range_":
-						s += ((("&".join(token.meta))+"="+token) + " ")
+						# s += ((("&".join(token.meta))+"="+token) + " ")
+						for tag, func in token.meta:
+							s += ("%s(%s)"%(tag, func))
+						s += ("="+token+" ")
 					elif token == "TERMINATED":
-						s += (token + " # " + token.meta)
+						s += (token + " # " + ",".join(token.meta))
 					else:
 						s += (token + " ")
 				print("\t{}".format(s))
