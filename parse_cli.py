@@ -370,7 +370,7 @@ WS  :   [ \\t\\r]+ -> skip ;\n"
 				for tag in self.terminated_map[(terminated, idx)]:
 					visitFunctions += "\
 		if ctx.{0} is not None:\n\
-			ret_set = self.match_metas(ctx.{0}, {1})\n\
+			ret_set = self.match_metas(ctx.{0}.getText(), {1})\n\
 			func_set = ret_set if func_set is None else func_set & ret_set\n".format(tag, str(self.tag_map[tag]))
 
 				visitFunctions += "\
