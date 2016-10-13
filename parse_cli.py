@@ -7,6 +7,19 @@ from ZyshLexer import ZyshLexer
 from ZyshParser import ZyshParser
 from ZyshVisitor import ZyshVisitor
 
+"""
+terminated_map
+	key : tuple(TagStr, idx:int)
+	val : list(tag_idx:str)
+
+tag_map
+	key : tag_idx:str
+	val : list(TagStr.meta)
+
+TagStr.meta
+	list(tuple(MetaName:str, FuncIdx:int))
+
+"""
 class TagStr(str):
 	def __new__(cls, value, meta):
 		obj = str.__new__(cls, value)
@@ -75,7 +88,7 @@ class DefPhase(ZyshVisitor):
 		self.cmd_map = {}
 		self.meta_map = {}
 		self.tag_map = {}
-		self.teminated_map = {}
+		self.terminated_map = {}
 		self.rule_map = {}
 
 	def visitHelper(self, ctx):
@@ -130,9 +143,9 @@ class DefPhase(ZyshVisitor):
 	def visitFunctionDecl(self, ctx):
 		privilege, visibility, function = self.visit(ctx.block())
 
-		self.temp = function
 		if function not in self.func_list:
 			self.func_list.append(function)
+		self.temp = self.func_list.index(function)
 
 		for symbols in ctx.symbols():
 			prefix = ""
@@ -259,7 +272,7 @@ class DefPhase(ZyshVisitor):
 
 			arg_key = "%s_arg"%rule_key
 			
-			self.rule_map[rule_key] = ["%s %s"%(prefix, arg_key)]
+			self.rule_map[rule_key] = ["%s ARG=%s"%(prefix, arg_key)]
 			self.rule_map[arg_key] = []
 
 			for rule in self.cmd_map[prefix]:
@@ -278,47 +291,16 @@ class DefPhase(ZyshVisitor):
 
 					elif token == "TERMINATED":
 						terminated_name = "TERMINATED%d"%terminated_idx
-						terminated_idx += 1
 
 						rule_context += (token + " # " + terminated_name)
-						self.teminated_map[terminated_name] = tag_list
+						self.terminated_map[(token, terminated_idx)] = tag_list
+
+						terminated_idx += 1
 
 					else:
 						rule_context += (token + " ")
 				
 				self.rule_map[arg_key].append(rule_context)
-
-
-	def listRule(self):
-		str_context = ""
-		i = 0
-		for prefix in self.cmd_map:
-			str_context += ("rule{0} : {1} rule{0}_arg ; \nrule{0}_arg : \n".format(i, prefix))
-			i += 1
-				
-			first = True
-			for rule in self.cmd_map[prefix]:
-				if first:
-					s = "  "
-				else:
-					s = "| "
-
-				for token in rule:
-					if token == "meta_" or token == "range_":
-						# s += ((("&".join(token.meta))+"="+token) + " ")
-						for tag, func in token.meta:
-							s += ("%s(%s)"%(tag, func))
-						s += ("="+token+" ")
-					elif token == "TERMINATED":
-						s += (token + " # " + ",".join(token.meta))
-					else:
-						s += (token + " ")
-				str_context += ("\t{}\n".format(s))
-				first = False
-			str_context += ("\t;\n")
-
-		print(str_context)
-
 
 	def generate_g4(self):
 		file_context = "grammar Cooked;\n\
@@ -355,17 +337,55 @@ WS  :   [ \\t\\r]+ -> skip ;\n"
 
 	def generate_py(self):
 		f = open('CookedHandler.template', 'r')
-		file_template = f.read().split("[VisitFunctions]")
+		file_template = f.read()
 
-		file_context = file_template[0]
-
-
-		file_context += file_template[-1]
+		initVariables = ""
+		visitFunctions = ""
 		
+		for meta in self.meta_map:
+			initVariables += "\n\
+		self.meta_map[\"%s\"] = \"%s\"\n"%(meta, self.meta_map[meta])
+
+
+		for rule in self.rule_map:
+			if not rule.endswith("_arg"):
+				visitFunctions += "\n\
+	def visit%s(self, ctx):\n\
+		l = self.visit(ctx.ARG)\n\
+		l += self.visitTemplate(ctx)\n\
+		return l\n"%rule.capitalize()
+
 		
-		# print(file_context)
-		# f = open('CookedHandler.py', 'w')
-		# f.write(file_context)
+		for terminated, idx in self.terminated_map:
+			visitFunctions += "\n\
+	def visit%s%d(self, ctx):\n"%(terminated, idx)
+		
+			if len(self.terminated_map[(terminated, idx)]) == 0:
+				visitFunctions += "\
+		return [%d]\n"%self.func_list.index(terminated.meta[0])
+		
+			else:
+				visitFunctions += "\
+		func_set = None\n"
+				for tag in self.terminated_map[(terminated, idx)]:
+					visitFunctions += "\
+		if ctx.{0} is not None:\n\
+			ret_set = self.match_metas(ctx.{0}, {1})\n\
+			func_set = ret_set if func_set is None else func_set & ret_set\n".format(tag, str(self.tag_map[tag]))
+
+				visitFunctions += "\
+		if len(func_set) == 0:\n\
+			return [-1]\n\
+		return [func_set.pop()]\n"
+
+
+		
+		file_template = file_template.replace("[InitVariables]", initVariables)
+		file_template = file_template.replace("[VisitFunctions]", visitFunctions)
+		
+		print(file_template)
+		f = open('CookedHandler.py', 'w')
+		f.write(file_template)
 
 	def visitFinish(self):
 		f = open('cmd_func.c', 'w')
@@ -400,10 +420,9 @@ tree = parser.top()
 visitor = DefPhase(sym_list, func_list)
 result = visitor.visit(tree)
 
-# visitor.visitFinish()
-# visitor.listRule()
 visitor.createRule()
-visitor.generate_g4()
+visitor.visitFinish()
+# visitor.listRule()
 
 # listEntryTree(global_entry)
 

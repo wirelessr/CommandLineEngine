@@ -14,10 +14,13 @@ class ExceptionListener(ErrorListener):
 		print("line " + str(line) + ":" + str(column) + " " + msg, file=sys.stderr)
 		raise FoundException()
 
-
 class CookedHandler(CookedVisitor, VisitTemplate):
-	def __init__(self, ruleNames):
-		VisitTemplate.__init__(self, ruleNames)
+	def __init__(self):
+		self.meta_map = {}
+		
+		[InitVariables]
+		
+		VisitTemplate.__init__(self, meta_map)
 	
 	[VisitFunctions]
 
@@ -40,7 +43,7 @@ def cli_exec(zysh_cli):
 		# print(lisp_tree_str)
 		
 		# definition phase, collect data
-		visitor = CookedHandler(parser.ruleNames)
+		visitor = CookedHandler()
 		result = visitor.visit(tree)
 		print("result :", result)
 		return result
