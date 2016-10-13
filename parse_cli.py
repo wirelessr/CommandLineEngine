@@ -303,12 +303,12 @@ class DefPhase(ZyshVisitor):
 				self.rule_map[arg_key].append(rule_context)
 
 	def generate_g4(self):
-		file_context = "grammar Cooked;\n\
-top: ("
+		rules = []
 		for rule in self.rule_map:
 			if not rule.endswith("_arg"):
-				file_context += (rule + " ")
-		file_context += ")+ ;\n"
+				rules.append(rule)
+		file_context = "grammar Cooked;\n\
+top: (%s)+ ;\n"%" | ".join(rules)
 			
 		for rule in self.rule_map:
 			file_context += (rule + " :\n")
@@ -326,7 +326,7 @@ top: ("
 		file_context += "\n\
 range_ : INT ;\n\
 meta_ : TEXT ;\n\
-TERMINATED : '\\n' ;\n\
+TERMINATED : '\\r'? '\\n' ;\n\
 INT :   '0' | '1'..'9' '0'..'9'* ;\n\
 TEXT : ~[ \\n\\r]+ ;\n\
 WS  :   [ \\t\\r]+ -> skip ;\n"
@@ -383,7 +383,7 @@ WS  :   [ \\t\\r]+ -> skip ;\n"
 		file_template = file_template.replace("[InitVariables]", initVariables)
 		file_template = file_template.replace("[VisitFunctions]", visitFunctions)
 		
-		print(file_template)
+		# print(file_template)
 		f = open('CookedHandler.py', 'w')
 		f.write(file_template)
 

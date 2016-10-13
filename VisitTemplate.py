@@ -7,7 +7,9 @@ class VisitTemplate:
 	def visitTemplate(self, ctx):
 		args = []
 		for child in ctx.getChild(ctx.getChildCount()-1).getChildren():
-			args.append(child.getText().encode())
+			text = child.getText()
+			if text != "\n":
+				args.append(child.getText().encode())
 		print("visitTemplate with args", args)
 		return args
 	

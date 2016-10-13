@@ -20,13 +20,13 @@ class CookedHandler(CookedVisitor, VisitTemplate):
 		
 		[InitVariables]
 		
-		VisitTemplate.__init__(self, meta_map)
+		VisitTemplate.__init__(self, self.meta_map)
 	
 	[VisitFunctions]
 
 def cli_exec(zysh_cli):
 	zysh_cli = zysh_cli.decode("utf8")
-	input_stream = InputStream(zysh_cli)
+	input_stream = InputStream(zysh_cli+"\n")
 	
 	lexer = CookedLexer(input_stream)
 	token_stream = CommonTokenStream(lexer)
