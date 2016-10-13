@@ -72,9 +72,11 @@ class DefPhase(ZyshVisitor):
 		self.sym_list = sym_list
 		self.func_list = func_list
 		self.temp = None
-		self.rule_map = {}
+		self.cmd_map = {}
 		self.meta_map = {}
-		self.arg_map = {}
+		self.tag_map = {}
+		self.teminated_map = {}
+		self.rule_map = {}
 
 	def visitHelper(self, ctx):
 		helper = ctx.getText()
@@ -145,8 +147,8 @@ class DefPhase(ZyshVisitor):
 
 				prefix += (" " + self.sym_list[sym_id].g4)
 			
-			if self.rule_map.get(prefix) is None:
-				self.rule_map[prefix] = []
+			if self.cmd_map.get(prefix) is None:
+				self.cmd_map[prefix] = []
 
 			teminated = TagStr("TERMINATED", [function])
 			if symbols.arg() is not None:
@@ -156,11 +158,11 @@ class DefPhase(ZyshVisitor):
 				arg_context = [teminated]
 
 
-			if arg_context in self.rule_map[prefix]:
-				exist_idx = self.rule_map[prefix].index(arg_context)
-				self.mergeMetaList(self.rule_map[prefix][exist_idx], arg_context)
+			if arg_context in self.cmd_map[prefix]:
+				exist_idx = self.cmd_map[prefix].index(arg_context)
+				self.mergeMetaList(self.cmd_map[prefix][exist_idx], arg_context)
 			else:
-				self.rule_map[prefix].append(arg_context)
+				self.cmd_map[prefix].append(arg_context)
 
 
 
@@ -216,7 +218,6 @@ class DefPhase(ZyshVisitor):
 			else:
 				arg_rules.append(arg_rule)
 
-		print(arg_rules)
 		if len(arg_rules) > 1 or option != "":
 			full_rule = ["("]
 		else:
@@ -247,17 +248,56 @@ class DefPhase(ZyshVisitor):
 		return self.visit(ctx.arg())
 
 
+	def createRule(self):
+		rule_idx = 0
+		terminated_idx = 0
+		tag_idx = 0
 
+		for prefix in self.cmd_map:
+			rule_key = "rule%d"%rule_idx
+			rule_idx += 1
+
+			arg_key = "%s_arg"%rule_key
+			
+			self.rule_map[rule_key] = ["%s %s"%(prefix, arg_key)]
+			self.rule_map[arg_key] = []
+
+			for rule in self.cmd_map[prefix]:
+				rule_context = ""
+				tag_list = []
+
+				for token in rule:
+					if token == "meta_" or token == "range_":
+						tag_name = "TAG%d"%tag_idx
+						tag_idx += 1
+
+						rule_context += ("%s=%s "%(tag_name, token))
+						self.tag_map[tag_name] = token.meta
+
+						tag_list.append(tag_name)
+
+					elif token == "TERMINATED":
+						terminated_name = "TERMINATED%d"%terminated_idx
+						terminated_idx += 1
+
+						rule_context += (token + " # " + terminated_name)
+						self.teminated_map[terminated_name] = tag_list
+
+					else:
+						rule_context += (token + " ")
+				
+				self.rule_map[arg_key].append(rule_context)
 
 
 	def listRule(self):
+		str_context = ""
 		i = 0
-		for prefix in self.rule_map:
-			print("rule{0} : {1} rule{0}_arg ; \nrule{0}_arg : ".format(i, prefix))
+		for prefix in self.cmd_map:
+			str_context += ("rule{0} : {1} rule{0}_arg ; \nrule{0}_arg : \n".format(i, prefix))
 			i += 1
 				
 			first = True
-			for rule in self.rule_map[prefix]:
+			for rule in self.cmd_map[prefix]:
 				if first:
 					s = "  "
 				else:
@@ -273,34 +313,45 @@ class DefPhase(ZyshVisitor):
 						s += (token + " # " + ",".join(token.meta))
 					else:
 						s += (token + " ")
-				print("\t{}".format(s))
+				str_context += ("\t{}\n".format(s))
 				first = False
-			print("\t;")
+			str_context += ("\t;\n")
+
+		print(str_context)
 
 
 	def generate_g4(self):
 		file_context = "grammar Cooked;\n\
 top: ("
-		for i in range(len(self.func_list)):
-			if i != 0:
-				file_context += " | "
-			file_context += ("func_" + self.func_list[i])
+		for rule in self.rule_map:
+			if not rule.endswith("_arg"):
+				file_context += (rule + " ")
 		file_context += ")+ ;\n"
 			
 		for rule in self.rule_map:
-			file_context += (rule + " : " + self.rule_map[rule] + ";\n")
+			file_context += (rule + " :\n")
+
+			for i in range(len(self.rule_map[rule])):
+				if i == 0:
+					file_context += "    "
+				else:
+					file_context += "  | "
+
+				file_context += (self.rule_map[rule][i] + "\n")
+
+			file_context += "  ;\n"
 		
 		file_context += "\n\
 range_ : INT ;\n\
 meta_ : TEXT ;\n\
-TERMINATED : '\n' ;\n\
+TERMINATED : '\\n' ;\n\
 INT :   '0' | '1'..'9' '0'..'9'* ;\n\
 TEXT : ~[ \\n\\r]+ ;\n\
 WS  :   [ \\t\\r]+ -> skip ;\n"
 
 		# print(file_context)
-		# f = open('Cooked.g4', 'w')
-		# f.write(file_context)
+		f = open('Cooked.g4', 'w')
+		f.write(file_context)
 
 	def generate_py(self):
 		f = open('CookedHandler.template', 'r')
@@ -308,40 +359,13 @@ WS  :   [ \\t\\r]+ -> skip ;\n"
 
 		file_context = file_template[0]
 
-		file_context += "\n\
-		self.func_list = [\"" + "\", \"".join(self.func_list) + "\"]\n\
-		self.meta_map = {}\n"
-		
-		for meta in self.meta_map:
-			file_context += "\n\
-		self.meta_map[\"%s\"] = \"%s\"\n"%(meta, self.meta_map[meta])
-			
-		for func in self.func_list:
-			file_context += "\n\
-	def visit%s(self, ctx):\n\
-		if not self.visit(ctx.ARG):\n\
-			return [-1]\n\
-		return self.visitTemplate(ctx, self.func_list)\n\
-\n\
-"%("Func_" + func)
-		
-		for arg in self.arg_map:
-			file_context += "\n\
-	def visit%s(self, ctx):\n\
-"%(arg.capitalize())
-			for meta in self.arg_map[arg]:
-				file_context += "\n\
-		if ctx.{0} is not None and not self.match_{1}(self.meta_map[\"{0}\"], ctx.{0}.getText()):\n\
-			return False\n".format(meta.define, meta.type)
-			file_context += "\n\
-		return True\n"
 
 		file_context += file_template[-1]
 		
 		
 		# print(file_context)
-		f = open('CookedHandler.py', 'w')
-		f.write(file_context)
+		# f = open('CookedHandler.py', 'w')
+		# f.write(file_context)
 
 	def visitFinish(self):
 		f = open('cmd_func.c', 'w')
@@ -377,7 +401,9 @@ visitor = DefPhase(sym_list, func_list)
 result = visitor.visit(tree)
 
 # visitor.visitFinish()
-visitor.listRule()
+# visitor.listRule()
+visitor.createRule()
+visitor.generate_g4()
 
 # listEntryTree(global_entry)
 
